@@ -104,7 +104,7 @@ def load_documents(document_filepath, clean_documents, documents_sampled):
         print(f"\nThe `documents_sampled` parameter ({documents_sampled}) exceeds the available number of documents ({initial_count}). Sampling will be adjusted to the maximum available documents ({initial_count}).\n")
         documents_sampled = initial_count
 
-    if count > 0: 
+    if documents_sampled > after_filter_count and count > 0: 
         print(f"Filtered out {count} documents because they had less than 50 words. Sampling will be be adjusted to {after_filter_count} documents\n")
         documents_sampled = after_filter_count
 

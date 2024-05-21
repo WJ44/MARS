@@ -184,14 +184,12 @@ class CustomBERTModel(nn.Module):
             embedding_size = 1536
             self.encoderModel = model_encoding
           
-          elif model_choice in ["microsoft/deberta-v3-xsmall"]:
-
+        elif model_choice in ["microsoft/deberta-v3-xsmall"]:
             model_encoding = AutoModel.from_pretrained(model_choice)
             embedding_size = 384
             self.encoderModel = model_encoding
 
-          else:
-
+        else:
             model_encoding = AutoModel.from_pretrained(model_choice)
             embedding_size = 768
             self.encoderModel = model_encoding

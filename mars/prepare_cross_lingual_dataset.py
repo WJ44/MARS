@@ -1,8 +1,14 @@
+import json
 import random
 import pandas as pd
 from tqdm import tqdm
 
 from datasets import load_dataset
+
+indexes = {
+    "en": json.load(open("multilingual_data/mlqa_index_en.json", "r")),
+    "de": json.load(open("multilingual_data/mlqa_index_de.json", "r"))
+}
 
 mlqa_en_en_total = load_dataset("facebook/mlqa", name="mlqa.en.en")
 
@@ -23,6 +29,7 @@ dataset_en_en["Document_en"] = wikipedia_passages_en
 dataset_en_en["Answer_en"] = wikipedia_answers_en
 dataset_en_en["Query_en"] = mlqa_en_en["question"]
 dataset_en_en["id"] = mlqa_en_en["id"]
+dataset_en_en["article_en"] = [indexes["en"][id] for id in mlqa_en_en["id"]]
 
 
 mlqa_de_de_total = load_dataset("facebook/mlqa", name="mlqa.de.de")
@@ -44,6 +51,7 @@ dataset_de_de["Document_de"] = wikipedia_passages_de
 dataset_de_de["Answer_de"] = wikipedia_answers_de
 dataset_de_de["Query_de"] = mlqa_de_de["question"]
 dataset_de_de["id"] = mlqa_de_de["id"]
+dataset_de_de["article_de"] = [indexes["de"][id] for id in mlqa_de_de["id"]]
 
 
 dataset_merged = pd.merge(dataset_en_en, dataset_de_de, on="id")
@@ -52,26 +60,38 @@ dataset_merged = pd.merge(dataset_en_en, dataset_de_de, on="id")
 dataset = pd.DataFrame()
 
 dataset["Document"] = dataset_merged["Document_en"]
-dataset["Answer"] = dataset_merged["Answer_en"] 
+dataset["Answer"] = dataset_merged["Answer_en"]
 dataset["Query"] = dataset_merged["Query_en"]
+dataset["id"] = dataset_merged["id"]
+dataset["doc_lang"] = "en"
+dataset["qa_lang"] = "en"
 
 dataset2 = pd.DataFrame()
 
 dataset2["Document"] = dataset_merged["Document_de"]
-dataset2["Answer"] = dataset_merged["Answer_de"] 
+dataset2["Answer"] = dataset_merged["Answer_de"]
 dataset2["Query"] = dataset_merged["Query_de"]
+dataset2["id"] = dataset_merged["id"]
+dataset2["doc_lang"] = "de"
+dataset2["qa_lang"] = "de"
 
 dataset3 = pd.DataFrame()
 
 dataset3["Document"] = dataset_merged["Document_de"]
-dataset3["Answer"] = dataset_merged["Answer_en"] 
+dataset3["Answer"] = dataset_merged["Answer_en"]
 dataset3["Query"] = dataset_merged["Query_en"]
+dataset3["id"] = dataset_merged["id"]
+dataset3["doc_lang"] = "de"
+dataset3["qa_lang"] = "en"
 
 dataset4 = pd.DataFrame()
 
 dataset4["Document"] = dataset_merged["Document_en"]
-dataset4["Answer"] = dataset_merged["Answer_de"] 
+dataset4["Answer"] = dataset_merged["Answer_de"]
 dataset4["Query"] = dataset_merged["Query_de"]
+dataset4["id"] = dataset_merged["id"]
+dataset4["doc_lang"] = "en"
+dataset4["qa_lang"] = "de"
 
 dataset = pd.concat([dataset, dataset2, dataset3, dataset4], axis=0, ignore_index=True)
 
@@ -85,27 +105,32 @@ answer_relevance_labels = []
 incorrect_language = []
 language_consistency_labels = []
 
-for row in tqdm(range(len(dataset))):
-    # filtered_list should haven passages from same wikipedia page without the passage containing the answer. Info not available from hugginface but is available on original github
 
-    filtered_list = []
+for row in tqdm(range(len(dataset))):
+    id = dataset.iloc[row]["id"]
+    qa_lang = dataset.iloc[row]["qa_lang"]
+    doc_lang = dataset.iloc[row]["doc_lang"]
+    article = indexes[doc_lang][id]
+    answer = dataset_merged[dataset_merged["id"] == id].iloc[0][f"Answer_{doc_lang}"]
+    wiki = dataset_merged[f"Document_{doc_lang}"].unique()
+
+    filtered_list = dataset_merged[dataset_merged[f"article_{doc_lang}"] == article][f"Document_{doc_lang}"].unique()
+    filtered_list = [item for item in filtered_list if answer not in item]
+    filtered_list = [item for item in filtered_list if len(item.strip().split(" ")) >= 50]
 
     if row % 2 == 0 and len(filtered_list) > 0:
         incorrect_passages.append(random.choice(filtered_list))
         context_relevance_labels.append(0)
     else:
-        random_int = random.randint(0, len(dataset) - 1)
-        cutoff = 100
+        random_int = random.randint(0, len(wiki) - 1)
         while (
-            random_int >= row - cutoff
-            and random_int
-            <= row + cutoff  # when passage is close in dataset pick new passage?
-            and dataset.iloc[random_int]["Document"] != dataset.iloc[row]["Document"]
-            and len(dataset.iloc[random_int]["Document"]) < 50
+            wiki[random_int] != dataset.iloc[row]["Document"]
+            and wiki[random_int] not in filtered_list
+            and len(wiki[random_int]) < 50
         ):
-            random_int = random.randint(0, len(dataset))
+            random_int = random.randint(0, len(wiki) - 1)
 
-        incorrect_passages.append(dataset.iloc[random_int]["Document"])
+        incorrect_passages.append(wiki[random_int])
         context_relevance_labels.append(0)
 
     random_int = random.randint(0, len(dataset) - 1)
@@ -116,11 +141,11 @@ for row in tqdm(range(len(dataset))):
     answer_faithfulness_labels.append(0)
     answer_relevance_labels.append(0)
 
-    if dataset.iloc[row]["Query"] in dataset_merged["Query_en"].values:
-        incorrect_language.append(dataset_merged.loc[dataset_merged["Query_en"] == dataset.iloc[row]["Query"]].iloc[0]["Answer_de"])
+    if qa_lang == "en":
+        incorrect_language.append(dataset_merged.loc[dataset_merged["id"] == id].iloc[0]["Answer_de"])
         language_consistency_labels.append(0)
-    elif dataset.iloc[row]["Query"] in dataset_merged["Query_de"].values:
-        incorrect_language.append(dataset_merged.loc[dataset_merged["Query_de"] == dataset.iloc[row]["Query"]].iloc[0]["Answer_en"])
+    elif qa_lang == "de":
+        incorrect_language.append(dataset_merged.loc[dataset_merged["id"] == id].iloc[0]["Answer_en"])
         language_consistency_labels.append(0)
 
 

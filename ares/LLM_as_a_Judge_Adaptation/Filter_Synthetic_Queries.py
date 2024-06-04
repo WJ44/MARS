@@ -20,7 +20,7 @@ from tqdm import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from sentence_transformers import SentenceTransformer
-embedding_model = SentenceTransformer("multi-qa-MiniLM-L6-cos-v1")
+embedding_model = SentenceTransformer("BAAI/bge-m3")
 
 
 def get_embedding(text: str, model: str = "text-embedding-ada-002") -> list:
@@ -43,7 +43,7 @@ def get_embedding(text: str, model: str = "text-embedding-ada-002") -> list:
     if len(text) > 50:
         text = " ".join(text.split(" ")[:50])
     
-    return embedding_model.encode(text).tolist()
+    return embedding_model.encode(text, normalize_embeddings=True).tolist()
     # Attempt to generate the embedding up to 5 times in case of failure
     for _ in range(5):
         try:
@@ -75,7 +75,7 @@ def generate_index(dataframe: pd.DataFrame) -> Dataset:
     dataframe['embeddings'] = dataframe["document"].progress_apply(lambda x: get_embedding(x, model='text-embedding-ada-002'))
     
     # Filter out rows where the embedding length is not 1536
-    dataframe = dataframe[dataframe['embeddings'].apply(lambda x: len(x)) == 384]
+    dataframe = dataframe[dataframe['embeddings'].apply(lambda x: len(x)) == 1024]
     
     # Convert dataframe to Hugging Face Dataset
     dataset = Dataset.from_pandas(dataframe)

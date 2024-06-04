@@ -512,7 +512,7 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
         None
     """
     # Read the synthetic queries from the specified file
-    synth_queries = pd.read_csv(synthetic_queries_filename, sep="\t")
+    synth_queries = pd.read_csv(synthetic_queries_filename, sep="\t", dtype=str)
     # Filter out queries with a length of 10 or less
     synth_queries = synth_queries[synth_queries["synthetic_query"].str.len() > 10]
 

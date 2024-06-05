@@ -21,7 +21,7 @@ from transformers import (AutoConfig, AutoModelForCausalLM, AutoModelForSeq2SeqL
 
 def generate_synthetic_query_llm_approach(document: str, prompt: str, length_of_fewshot_prompt: int, 
 device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, percentiles: list, 
-for_fever_dataset=False, for_wow_dataset=False) -> list:
+for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_language=None) -> list:
     """
     Generates synthetic queries based on a document using a language model.
 
@@ -48,11 +48,11 @@ for_fever_dataset=False, for_wow_dataset=False) -> list:
     # Construct the prompt without the document based on the dataset type
     prompt_without_document = prompt + "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
     if for_fever_dataset:
-        prompt_without_document += "Document: \nStatement: "
+        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): "
     elif for_wow_dataset:
-        prompt_without_document += "Document: \nDialogue: "
+        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): "
     else:
-        prompt_without_document += "Document: \nQuestion: "
+        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): "
 
     # Calculate the length of tokens for the prompt and document
     prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors='pt').to(device).shape[1]
@@ -66,13 +66,13 @@ for_fever_dataset=False, for_wow_dataset=False) -> list:
 
     # Append the document to the prompt
     prompt += "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
-    prompt += "Document: " + document + "\n"
+    prompt += f"Document ({document_language}): " + document + "\n"
     if for_fever_dataset:
-        prompt += "Statement: "
+        prompt += f"Statement ({query_language}): "
     elif for_wow_dataset:
-        prompt += "Dialogue: "
+        prompt += f"Dialogue ({query_language}): "
     else:
-        prompt += "Question: "
+        prompt += f"Question ({query_language}): "
 
     # Encode the complete prompt
     input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
@@ -99,7 +99,7 @@ for_fever_dataset=False, for_wow_dataset=False) -> list:
     return synthetic_queries
 
 def generate_answer_llm_approach(document: str, question: str, prompt: str, length_of_fewshot_prompt: int, 
-device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset=False, for_wow_dataset=False) -> str:
+device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_language=None) -> str:
     """
     Generates an answer using a language model based on the provided document and question.
 
@@ -124,11 +124,11 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
     # Construct the prompt without the document based on the dataset type
     prompt_without_document = prompt + "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
     if for_fever_dataset:
-        prompt_without_document += "Document: \nStatement: \nAnswer: "
+        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): \nAnswer ({query_language}): "
     elif for_wow_dataset:
-        prompt_without_document += "Document: \nDialogue: \nResponse: "
+        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): \nResponse ({query_language}): "
     else:
-        prompt_without_document += "Document: \nQuestion: \nAnswer: "
+        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): \nAnswer ({query_language}): "
 
     # Calculate the token lengths for the prompt, document, and question
     prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors='pt').to(device).shape[1]
@@ -144,16 +144,16 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
 
     # Append the document and question to the prompt
     prompt += "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
-    prompt += "Document: " + document + "\n"
+    prompt += f"Document ({document_language}): " + document + "\n"
     if for_fever_dataset:
-        prompt += "Statement: " + question + "\n"
-        prompt += "Answer: "
+        prompt += f"Statement ({query_language}): " + question + "\n"
+        prompt += f"Answer ({query_language}): "
     elif for_wow_dataset:
-        prompt += "Dialogue: " + question + "\n"
-        prompt += "Response: "
+        prompt += f"Dialogue ({query_language}): " + question + "\n"
+        prompt += f"Response ({query_language}): "
     else:
-        prompt += "Question: " + question + "\n"
-        prompt += "Answer: "
+        prompt += f"Question ({query_language}): " + question + "\n"
+        prompt += f"Answer ({query_language}): "
 
     # Encode the complete prompt
     input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
@@ -385,7 +385,7 @@ def check_generated_answer(answer: str) -> str:
     
 def generate_contradictory_answer_examples(queries_dataset: pd.DataFrame, number_of_contradictory_answers_to_generate: int, 
 few_shot_examples_for_contradictory_answers=None, device=None, tokenizer=None, 
-model=None, for_fever_dataset=None, for_wow_dataset=None) -> pd.DataFrame:
+model=None, for_fever_dataset=None, for_wow_dataset=None, document_language=None, query_language=None) -> pd.DataFrame:
     """
     Generates a specified number of contradictory answers from a given dataset of queries.
 
@@ -441,7 +441,7 @@ model=None, for_fever_dataset=None, for_wow_dataset=None) -> pd.DataFrame:
         if few_shot_examples_for_contradictory_answers is None:
             contradictory_answer_generated = generate_contradictory_answer_from_context(queries_dataset_copy.iloc[i]['document'], queries_dataset_copy.iloc[i]['synthetic_query'])
         else:
-            contradictory_answer_generated = generate_contradictory_answer_llm_approach(queries_dataset_copy.iloc[i]['document'], queries_dataset_copy.iloc[i]['synthetic_query'], few_shot_examples_for_contradictory_answers, device, tokenizer, model, for_fever_dataset=for_fever_dataset, for_wow_dataset=for_wow_dataset)
+            contradictory_answer_generated = generate_contradictory_answer_llm_approach(queries_dataset_copy.iloc[i]['document'], queries_dataset_copy.iloc[i]['synthetic_query'], few_shot_examples_for_contradictory_answers, device, tokenizer, model, for_fever_dataset=for_fever_dataset, for_wow_dataset=for_wow_dataset, document_language=document_language, query_language=query_language)
 
         contradictory_answer_generated = remove_problematic_contradictory_phrases(contradictory_answer_generated)
 
@@ -483,7 +483,7 @@ model=None, for_fever_dataset=None, for_wow_dataset=None) -> pd.DataFrame:
     return queries_dataset
 
 def generate_contradictory_answer_llm_approach(document: str, question: str, prompt: str, device: torch.device, 
-tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset: bool = False, for_wow_dataset: bool = False) -> str:
+tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset: bool = False, for_wow_dataset: bool = False, document_language=None, query_language=None) -> str:
     """
     Generates a contradictory answer using a language model approach based on the provided document and question.
 
@@ -508,11 +508,11 @@ tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset: bool =
     # Construct the initial part of the prompt without the document based on the dataset type
     prompt_without_document = prompt + "Example " + str(prompt.count("Example") + 1) + ":\n"
     if for_fever_dataset:
-        prompt_without_document += "Document: \nStatement: \nIncorrect Answer: "
+        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): \nIncorrect Answer ({query_language}): "
     elif for_wow_dataset:
-        prompt_without_document += "Document: \nDialogue: \nIncorrect Response: "
+        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): \nIncorrect Response ({query_language}): "
     else:
-        prompt_without_document += "Document: \nQuestion: \nIncorrect Answer: "
+        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): \nIncorrect Answer ({query_language}): "
 
     # Calculate the token lengths for the prompt, document, and question
     prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors='pt').to(device).shape[1]
@@ -528,16 +528,16 @@ tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset: bool =
 
     # Append the document and question to the prompt
     prompt += "Example " + str(prompt.count("Example") + 1) + ":\n"
-    prompt += "Document: " + document + "\n"
+    prompt += f"Document ({document_language}): " + document + "\n"
     if for_fever_dataset:
-        prompt += "Statement: " + question + "\n"
-        prompt += "Incorrect Answer: " 
+        prompt += f"Statement ({query_language}): " + question + "\n"
+        prompt += f"Incorrect Answer ({query_language}): " 
     elif for_wow_dataset:
-        prompt += "Dialogue: " + question + "\n"
-        prompt += "Incorrect Response: " 
+        prompt += f"Dialogue ({query_language}): " + question + "\n"
+        prompt += f"Incorrect Response ({query_language}): " 
     else:
-        prompt += "Question: " + question + "\n"
-        prompt += "Incorrect Answer: " 
+        prompt += f"Question ({query_language}): " + question + "\n"
+        prompt += f"Incorrect Answer ({query_language}): " 
 
     # Encode the complete prompt
     input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)

@@ -27,7 +27,9 @@ def synthetic_generator_config(
     synthetic_query_prompt: str = (
         "You are an expert question-answering system. You must create a question for the provided document. "
         "The question must be answerable within the context of the document.\n\n"
-    )
+    ),
+    document_language: str = "English",
+    query_language: str = "English"
 ) -> None:
     """
     Configures and generates synthetic queries and answers based on the provided parameters.
@@ -66,15 +68,15 @@ def synthetic_generator_config(
         documents = load_documents(document_filepath, clean_documents, documents_sampled)
 
         few_shot_examples, length_of_fewshot_prompt = load_few_shot_prompt(
-            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset
+            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
         )
 
         few_shot_examples_for_contradictory_answers = generate_contradictory_answers(
-            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset
+            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
         )
 
         answer_gen_few_shot_examples, length_of_fewshot_prompt_answer_gen = generate_few_shot_prompts(
-            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset
+            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
         )
 
         synthetic_queries_config = {
@@ -88,7 +90,9 @@ def synthetic_generator_config(
             'for_wow_dataset': for_wow_dataset,
             'synthetic_query_prompt': synthetic_query_prompt,
             'synthetic_queries_filename': synthetic_queries_filename,
-            'question_temperatures': question_temperatures
+            'question_temperatures': question_temperatures,
+            'document_language': document_language,
+            'query_language': query_language
         }
 
         generate_synthetic_queries(documents, synthetic_queries_config)
@@ -107,7 +111,9 @@ def synthetic_generator_config(
             'lower_bound_for_negatives': lower_bound_for_negatives,
             'number_of_contradictory_answers_added_ratio': number_of_contradictory_answers_added_ratio,
             'number_of_positives_added_ratio': number_of_positives_added_ratio,
-            'regenerate_embeddings': regenerate_embeddings
+            'regenerate_embeddings': regenerate_embeddings,
+            'document_language': document_language,
+            'query_language': query_language
         }
 
         Generate_Synthetic_Answers(synthetic_queries_filename, synthetic_answers_config)

@@ -50,7 +50,9 @@ class ARES:
             "number_of_contradictory_answers_added_ratio": (float, 0.67),  # Optional with default
             "number_of_positives_added_ratio": (float, 0.0),  # Optional with default
             "regenerate_embeddings": (float, True),  # Optional with default
-            "synthetic_query_prompt": (str, "You are an expert question-answering system. You must create a question for the provided document. The question must be answerable within the context of the document.\n\n")  # Optional with default
+            "synthetic_query_prompt": (str, "You are an expert question-answering system. You must create a question for the provided document. The question must be answerable within the context of the document.\n\n"),  # Optional with default
+            "document_language": (str, None),
+            "query_language": (str, None)
         },
         
         "classifier_model": {

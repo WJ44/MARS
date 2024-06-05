@@ -157,7 +157,7 @@ def load_documents(document_filepath: str, clean_documents: bool, documents_samp
 
     return documents
 
-def load_few_shot_prompt(few_shot_prompt_filename: str, for_fever_dataset: bool, for_wow_dataset: bool) -> tuple[str, int]:
+def load_few_shot_prompt(few_shot_prompt_filename: str, for_fever_dataset: bool, for_wow_dataset: bool, document_language: str, query_language: str) -> tuple[str, int]:
     """
     Loads and processes a few-shot prompt from a TSV file.
 
@@ -180,18 +180,18 @@ def load_few_shot_prompt(few_shot_prompt_filename: str, for_fever_dataset: bool,
 
     for row in range(len(few_shot_prompt)):
         few_shot_examples += f"Example {row + 1}:\n"
-        few_shot_examples += f"Document: {clean_document(few_shot_prompt.iloc[row]['Document'])}\n"
+        few_shot_examples += f"Document ({document_language}): {clean_document(few_shot_prompt.iloc[row]['Document'])}\n"
         
         if for_fever_dataset:
-            few_shot_examples += f"Statement: {few_shot_prompt.iloc[row]['Query']}\n\n"
+            few_shot_examples += f"Statement ({query_language}): {few_shot_prompt.iloc[row]['Query']}\n\n"
         elif for_wow_dataset:
-            few_shot_examples += f"Dialogue: {few_shot_prompt.iloc[row]['Query']}\n\n"
+            few_shot_examples += f"Dialogue ({query_language}): {few_shot_prompt.iloc[row]['Query']}\n\n"
         else:
-            few_shot_examples += f"Question: {few_shot_prompt.iloc[row]['Query']}\n\n"
+            few_shot_examples += f"Question ({query_language}): {few_shot_prompt.iloc[row]['Query']}\n\n"
 
     return few_shot_examples, length_of_fewshot_prompt
 
-def generate_contradictory_answers(few_shot_prompt_filename: str, for_fever_dataset: bool, for_wow_dataset: bool) -> str:
+def generate_contradictory_answers(few_shot_prompt_filename: str, for_fever_dataset: bool, for_wow_dataset: bool, document_language: str, query_language: str) -> str:
     """
     Generates few-shot examples for contradictory answers based on the provided dataset.
 
@@ -214,21 +214,21 @@ def generate_contradictory_answers(few_shot_prompt_filename: str, for_fever_data
 
     for row in range(len(few_shot_prompt_for_contradictory_answers)):
         few_shot_examples_for_contradictory_answers += f"Example {row + 1}:\n"
-        few_shot_examples_for_contradictory_answers += f"Document: {few_shot_prompt_for_contradictory_answers.iloc[row]['Document']}\n"
+        few_shot_examples_for_contradictory_answers += f"Document ({document_language}): {few_shot_prompt_for_contradictory_answers.iloc[row]['Document']}\n"
         
         if for_fever_dataset:
-            few_shot_examples_for_contradictory_answers += f"Statement: {few_shot_prompt_for_contradictory_answers.iloc[row]['Query']}\n"
-            few_shot_examples_for_contradictory_answers += f"Incorrect Answer: {few_shot_prompt_for_contradictory_answers.iloc[row]['Contradictory_Answer']}\n\n"
+            few_shot_examples_for_contradictory_answers += f"Statement ({query_language}): {few_shot_prompt_for_contradictory_answers.iloc[row]['Query']}\n"
+            few_shot_examples_for_contradictory_answers += f"Incorrect Answer ({query_language}): {few_shot_prompt_for_contradictory_answers.iloc[row]['Contradictory_Answer']}\n\n"
         elif for_wow_dataset:
-            few_shot_examples_for_contradictory_answers += f"Dialogue: {few_shot_prompt_for_contradictory_answers.iloc[row]['Query']}\n"
-            few_shot_examples_for_contradictory_answers += f"Incorrect Response: {few_shot_prompt_for_contradictory_answers.iloc[row]['Contradictory_Answer']}\n\n"
+            few_shot_examples_for_contradictory_answers += f"Dialogue ({query_language}): {few_shot_prompt_for_contradictory_answers.iloc[row]['Query']}\n"
+            few_shot_examples_for_contradictory_answers += f"Incorrect Response ({query_language}): {few_shot_prompt_for_contradictory_answers.iloc[row]['Contradictory_Answer']}\n\n"
         else:
-            few_shot_examples_for_contradictory_answers += f"Question: {few_shot_prompt_for_contradictory_answers.iloc[row]['Query']}\n"
-            few_shot_examples_for_contradictory_answers += f"Incorrect Answer: {few_shot_prompt_for_contradictory_answers.iloc[row]['Contradictory_Answer']}\n\n"
+            few_shot_examples_for_contradictory_answers += f"Question ({query_language}): {few_shot_prompt_for_contradictory_answers.iloc[row]['Query']}\n"
+            few_shot_examples_for_contradictory_answers += f"Incorrect Answer ({query_language}): {few_shot_prompt_for_contradictory_answers.iloc[row]['Contradictory_Answer']}\n\n"
 
     return few_shot_examples_for_contradictory_answers
 
-def generate_few_shot_prompts(few_shot_prompt_filename: str, for_fever_dataset: bool, for_wow_dataset: bool) -> tuple[str, int]:
+def generate_few_shot_prompts(few_shot_prompt_filename: str, for_fever_dataset: bool, for_wow_dataset: bool, document_language: str, query_language: str) -> tuple[str, int]:
     """
     Generates few-shot prompts for answer generation based on the provided dataset.
 
@@ -262,17 +262,17 @@ def generate_few_shot_prompts(few_shot_prompt_filename: str, for_fever_dataset: 
     # Construct the few-shot examples
     for row in range(len(answer_gen_few_shot_prompt)):
         answer_gen_few_shot_examples += f"Example {row + 1}:\n"
-        answer_gen_few_shot_examples += f"Document: {answer_gen_few_shot_prompt.iloc[row]['Document']}\n"
+        answer_gen_few_shot_examples += f"Document ({document_language}): {answer_gen_few_shot_prompt.iloc[row]['Document']}\n"
         
         if for_fever_dataset:
-            answer_gen_few_shot_examples += f"Statement: {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
-            answer_gen_few_shot_examples += f"Answer: {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
+            answer_gen_few_shot_examples += f"Statement ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
+            answer_gen_few_shot_examples += f"Answer ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
         elif for_wow_dataset:
-            answer_gen_few_shot_examples += f"Dialogue: {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
-            answer_gen_few_shot_examples += f"Response: {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
+            answer_gen_few_shot_examples += f"Dialogue ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
+            answer_gen_few_shot_examples += f"Response ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
         else:
-            answer_gen_few_shot_examples += f"Question: {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
-            answer_gen_few_shot_examples += f"Answer: {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
+            answer_gen_few_shot_examples += f"Question ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
+            answer_gen_few_shot_examples += f"Answer ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
     
     return answer_gen_few_shot_examples, length_of_fewshot_prompt_answer_gen
 
@@ -296,7 +296,9 @@ def generate_query(document: str, settings: dict) -> list:
         settings['model'], 
         settings['percentiles'], 
         settings['for_fever_dataset'], 
-        settings['for_wow_dataset']
+        settings['for_wow_dataset'],
+        settings['document_language'],
+        settings['query_language']
     )
 
 def process_documents(documents: pd.DataFrame, settings: dict) -> pd.DataFrame:
@@ -368,7 +370,9 @@ def generate_answers(synthetic_queries: pd.DataFrame, answer_generation_settings
             answer_generation_settings['tokenizer'], 
             answer_generation_settings['model'], 
             answer_generation_settings['for_fever_dataset'], 
-            answer_generation_settings['for_wow_dataset']
+            answer_generation_settings['for_wow_dataset'],
+            answer_generation_settings['document_language'],
+            answer_generation_settings['query_language']
         ), 
         axis=1
     )

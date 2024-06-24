@@ -109,7 +109,7 @@ def filter_synthetic_queries(queries_dataset: pd.DataFrame, document_index) -> p
         question_embedding = np.array(get_embedding(question)).astype(np.float32)
         
         # Ensure question_embedding is a 2D array with shape (1, 1536)
-        if question_embedding.shape != (1536,):
+        if question_embedding.shape != (1024,):
             raise ValueError(f"Expected embedding of shape (1536,), but got {question_embedding.shape}")
 
         question_embedding = question_embedding.reshape(1, -1)

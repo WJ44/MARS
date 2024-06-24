@@ -86,7 +86,7 @@ def load_model(model_choice: str) -> tuple:
     """
     # Load the tokenizer and model from the specified model choice
     tokenizer = AutoTokenizer.from_pretrained(model_choice)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_choice)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_choice, torch_dtype=torch.float16)
 
     # Disable gradient calculations and set the model to evaluation mode
     torch.no_grad()

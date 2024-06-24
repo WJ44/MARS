@@ -6,7 +6,6 @@ from .kilt_filter import KILT_dataset_process
 from .superglue_filter import superGlue
 from .prompts import context_relevance_system_prompt, answer_relevance_system_prompt, answer_faithfulness_system_prompt
 from typing import List
-import pandas as pd
 
 class ARES:
     """
@@ -27,7 +26,7 @@ class ARES:
             "answer_relevance_system_prompt": (str, answer_relevance_system_prompt),  # Optional with default
             "answer_faithfulness_system_prompt": (str, answer_faithfulness_system_prompt),  # Optional with default
             "debug_mode": (bool, False),  # Optional with default
-            "documents": (int, 0),  # Optional with default
+            "documents": (int, "None"),  # Optional with default
             "model_choice": (str, "gpt-3.5-turbo-1106"),  # Optional with default
             "request_delay": (int, 0),  # Optional with default
             "vllm": (bool, False),  # Optional with default
@@ -40,6 +39,7 @@ class ARES:
             "synthetic_queries_filenames": (list, None),  # Required parameter with no default value
             "documents_sampled": (int, None),  # Required parameter with no default value
             "model_choice": (str, "google/flan-t5-xxl"),  # Optional with default
+            "api_model": (bool, False), # Optional with default
             "clean_documents": (bool, False),  # Optional with default
             "regenerate_synth_questions": (bool, True),  # Optional with default
             "percentiles": (list, [0.05, 0.25, 0.5, 0.95]),  # Optional with default
@@ -50,9 +50,11 @@ class ARES:
             "number_of_contradictory_answers_added_ratio": (float, 0.67),  # Optional with default
             "number_of_positives_added_ratio": (float, 0.0),  # Optional with default
             "regenerate_embeddings": (float, True),  # Optional with default
-            "synthetic_query_prompt": (str, "You are an expert question-answering system. You must create a question for the provided document. The question must be answerable within the context of the document.\n\n"),  # Optional with default
+            "synthetic_query_prompt": (str, "You are an expert question-answering system. You are a model trained to generate a single question based on the provided document. The question must be answerable within the context of the document. Return only the query, nothing else.\n\n"),
+            "synthetic_valid_answer_prompt": (str, "You are an expert question-answering system. You must create an answer for the provided question. The answer must be answerable within the context of the document.\n\n"),
+            "synthetic_contradictory_answer_prompt": (str, "Create an answer for the given question that contradicts the provided document. You should create false information that disagrees with what exists within the content of the document.  Return only the false answer, without any labels or additional text.\n\n"),
             "document_language": (str, "English"),
-            "query_language": (str, "English")
+            "query_language": (str, "English"),
         },
         
         "classifier_model": {

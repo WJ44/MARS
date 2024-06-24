@@ -14,6 +14,7 @@ def synthetic_generator_config(
     synthetic_queries_filenames: list, 
     documents_sampled: int,
     model_choice: str = "google/flan-t5-xxl", 
+    api_model: bool = False,
     clean_documents: bool = False,
     regenerate_synth_questions: bool = True, 
     percentiles: list = [0.05, 0.25, 0.5, 0.95], 
@@ -28,6 +29,14 @@ def synthetic_generator_config(
         "You are an expert question-answering system. You must create a question for the provided document. "
         "The question must be answerable within the context of the document.\n\n"
     ),
+    synthetic_valid_answer_prompt: str = (
+        "You are an expert question-answering system. You must create an answer for the provided question. "
+        "The answer must be answerable within the context of the document.\n\n"
+    ),
+    synthetic_contradictory_answer_prompt: str = (
+        "Create an answer for the given question that contradicts the provided document. "
+        "You should create false information that disagrees with what exists within the content of the document.\n\n"
+    ),
     document_language: str = "English",
     query_language: str = "English"
 ) -> None:
@@ -40,6 +49,7 @@ def synthetic_generator_config(
         synthetic_queries_filenames (list): List of filenames for the synthetic queries.
         documents_sampled (int): Number of documents to sample.
         model_choice (str, optional): Model choice for the generation. Defaults to "google/flan-t5-xxl".
+        api_model (bool, optional): Whether to use an API model. Defaults to False.
         clean_documents (bool, optional): Whether to clean the documents. Defaults to False.
         regenerate_synth_questions (bool, optional): Whether to regenerate synthetic questions. Defaults to True.
         percentiles (list, optional): List of percentiles for the generation. Defaults to [0.05, 0.25, 0.5, 0.95].
@@ -56,7 +66,7 @@ def synthetic_generator_config(
         ValueError: If the lengths of document_filepaths and synthetic_queries_filenames do not match.
     """
     
-    model, tokenizer, device = load_model(model_choice)
+    model, tokenizer, device = load_model(model_choice, api_model)
 
     if len(document_filepaths) != len(synthetic_queries_filenames):
         raise ValueError("document_filepaths and synthetic_queries_filenames lists must be of the same length.")
@@ -85,6 +95,8 @@ def synthetic_generator_config(
             'device': device,
             'tokenizer': tokenizer,
             'model': model,
+            'api_model': api_model,
+            'model_choice': model_choice,
             'percentiles': percentiles,
             'for_fever_dataset': for_fever_dataset,
             'for_wow_dataset': for_wow_dataset,
@@ -103,6 +115,9 @@ def synthetic_generator_config(
             'length_of_fewshot_prompt_answer_gen': length_of_fewshot_prompt_answer_gen,
             'device': device,
             'tokenizer': tokenizer,
+            'api_model': api_model,
+            'synthetic_valid_answer_prompt': synthetic_valid_answer_prompt,
+            'synthetic_contradictory_answer_prompt': synthetic_contradictory_answer_prompt,
             'model': model,
             'for_fever_dataset': for_fever_dataset,
             'for_wow_dataset': for_wow_dataset,

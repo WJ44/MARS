@@ -77,7 +77,11 @@ for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_la
         prompt += f"Question ({query_language}): "
 
     # Encode the complete prompt
-    input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
+    prompt = [{"role": "user", "content": prompt}]
+
+    input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt")
+    prompt_len = len(input_ids[0])
+    # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 
     # Set the maximum length for the generated text based on the dataset
     max_length = 32 if not for_wow_dataset else 256
@@ -95,7 +99,7 @@ for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_la
             top_p=percentile,
             num_return_sequences=1)
 
-        query = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        query = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
 
         breakpoint() 
 

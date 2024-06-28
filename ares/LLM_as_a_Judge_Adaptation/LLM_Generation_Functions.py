@@ -165,7 +165,9 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
         prompt += f"Answer ({query_language}): "
 
     # Encode the complete prompt
-    input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
+    input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
+    prompt_len = len(input_ids[0])
+    # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 
     # Check for encoding issues and generate the answer
     if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
@@ -174,12 +176,12 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
         assert False
     outputs = model.generate(
         input_ids=input_ids,
-        max_length=256,
+        max_new_tokens=256,
         do_sample=True,
         top_p=0.05,
         num_return_sequences=1)
 
-    answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    answer = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
 
     return answer
 

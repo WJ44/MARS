@@ -34,7 +34,7 @@ def get_embedding(text: str, model: str = "text-embedding-ada-002") -> list:
     Returns:
     list: A list representing the embedding of the input text.
     """
-    client = OpenAI()
+    # client = OpenAI()
     
     # Replace newline characters with spaces
     text = text.replace("\n", " ")
@@ -45,12 +45,12 @@ def get_embedding(text: str, model: str = "text-embedding-ada-002") -> list:
     
     return embedding_model.encode(text, normalize_embeddings=True).tolist()
     # Attempt to generate the embedding up to 5 times in case of failure
-    for _ in range(5):
-        try:
-            return client.embeddings.create(input=[text], model=model).data[0].embedding
-        except Exception as e:
-            print(f"Error generating embedding: {e}. Attempting again...")
-            time.sleep(30)
+    # for _ in range(5):
+    #     try:
+    #         return client.embeddings.create(input=[text], model=model).data[0].embedding
+    #     except Exception as e:
+    #         print(f"Error generating embedding: {e}. Attempting again...")
+    #         time.sleep(30)
 
 def generate_index(dataframe: pd.DataFrame) -> Dataset:
     """

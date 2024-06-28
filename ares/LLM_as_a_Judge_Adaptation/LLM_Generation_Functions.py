@@ -79,7 +79,7 @@ for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_la
     # Encode the complete prompt
     prompt = [{"role": "user", "content": prompt}]
 
-    input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt")
+    input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
     prompt_len = len(input_ids[0])
     # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 

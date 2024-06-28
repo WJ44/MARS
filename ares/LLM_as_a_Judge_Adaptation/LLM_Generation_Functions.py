@@ -90,7 +90,7 @@ for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_la
             assert False
         outputs = model.generate(
             input_ids=input_ids,
-            max_length=max_length,
+            max_new_tokens=max_length,
             do_sample=True,
             top_p=percentile,
             num_return_sequences=1)

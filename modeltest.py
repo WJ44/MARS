@@ -5,7 +5,7 @@ synth_config = {
     "few_shot_prompt_filename": "datasets/example_files/nq_few_shot_prompt_for_synthetic_query_generation.tsv",
     "synthetic_queries_filenames": ["nq_0.6_synthetic_queries.tsv"],
     "documents_sampled": 10,
-    "model_choice": "CohereForAI/aya-101"
+    "model_choice": "CohereForAI/aya-23-8B"
 }
 
 ares = ARES(synthetic_query_generator=synth_config)

@@ -101,8 +101,6 @@ for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_la
 
         query = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
 
-        breakpoint() 
-
         synthetic_queries.append(query)
 
     return synthetic_queries

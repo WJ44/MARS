@@ -5,6 +5,11 @@ from tqdm import tqdm
 
 from datasets import load_dataset
 
+#TODO sample few-shot examples
+#TODO test set
+#TODO files with just English or German documents for synthetic query generation
+#TODO human relevance judgement set
+
 indexes = {
     "en": json.load(open("multilingual_data/mlqa_index_en.json", "r")),
     "de": json.load(open("multilingual_data/mlqa_index_de.json", "r"))
@@ -157,14 +162,14 @@ dataset_copy_1["Document"] = incorrect_passages
 dataset_copy_1["Context_Relevance_Label"] = context_relevance_labels
 
 dataset_copy_2["Answer"] = incorrect_answers
-dataset_copy_2["Answer_Faithfulness_Label"] = answer_faithfulness_labels
+# dataset_copy_2["Answer_Faithfulness_Label"] = answer_faithfulness_labels
 dataset_copy_2["Answer_Relevance_Label"] = answer_relevance_labels
 
 dataset_copy_3["Answer"] = incorrect_language
 dataset_copy_3["Language_Consistency_Label"] = language_consistency_labels
 
 dataset['Context_Relevance_Label'] = [1 for _ in range(len(dataset))]
-dataset['Answer_Faithfulness_Label'] = [1 for _ in range(len(dataset))]
+# dataset['Answer_Faithfulness_Label'] = [1 for _ in range(len(dataset))]
 dataset['Answer_Relevance_Label'] = [1 for _ in range(len(dataset))]
 dataset['Language_Consistency_Label'] = [1 for _ in range(len(dataset))]
 

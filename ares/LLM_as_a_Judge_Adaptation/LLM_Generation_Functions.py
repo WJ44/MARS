@@ -77,32 +77,54 @@ for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_la
         prompt += f"Question ({query_language}): "
 
     # Encode the complete prompt
-    prompt = [{"role": "user", "content": prompt}]
+    if "aya" in model.config.model_type:
+        prompt = [{"role": "user", "content": prompt}]
 
-    input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
-    prompt_len = len(input_ids[0])
-    # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
+        input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
+        prompt_len = len(input_ids[0])
+        # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 
-    # Set the maximum length for the generated text based on the dataset
-    max_length = 32 if not for_wow_dataset else 256
+        # Set the maximum length for the generated text based on the dataset
+        max_length = 32 if not for_wow_dataset else 256
 
-    # Generate queries for each percentile
-    for percentile in percentiles:
-        if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
-            print("Length of problematic input ids: " + str(input_ids.shape))
-            print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
-            assert False
-        outputs = model.generate(
-            input_ids=input_ids,
-            max_new_tokens=max_length,
-            do_sample=True,
-            top_p=percentile,
-            num_return_sequences=1)
+        # Generate queries for each percentile
+        for percentile in percentiles:
+            if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
+                print("Length of problematic input ids: " + str(input_ids.shape))
+                print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+                assert False
+            outputs = model.generate(
+                input_ids=input_ids,
+                max_new_tokens=max_length,
+                do_sample=True,
+                top_p=percentile,
+                num_return_sequences=1)
 
-        query = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
+            query = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
 
-        synthetic_queries.append(query)
+            synthetic_queries.append(query)
+    else:
+        input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 
+        # Set the maximum length for the generated text based on the dataset
+        max_length = 32 if not for_wow_dataset else 256
+
+        # Generate queries for each percentile
+        for percentile in percentiles:
+            if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
+                print("Length of problematic input ids: " + str(input_ids.shape))
+                print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+                assert False
+            outputs = model.generate(
+                input_ids=input_ids,
+                max_length=max_length,
+                do_sample=True,
+                top_p=percentile,
+                num_return_sequences=1)
+
+            query = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+            synthetic_queries.append(query)
     return synthetic_queries
 
 def generate_answer_llm_approach(document: str, question: str, prompt: str, length_of_fewshot_prompt: int, 
@@ -163,26 +185,43 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
         prompt += f"Answer ({query_language}): "
 
     # Encode the complete prompt
-    prompt = [{"role": "user", "content": prompt}]
+    if "aya" in model.config.model_type:
+        prompt = [{"role": "user", "content": prompt}]
 
-    input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
-    prompt_len = len(input_ids[0])
-    # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
+        input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
+        prompt_len = len(input_ids[0])
+        # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 
-    # Check for encoding issues and generate the answer
-    if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
-        print("Length of problematic input ids: " + str(input_ids.shape))
-        print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
-        assert False
-    outputs = model.generate(
-        input_ids=input_ids,
-        max_new_tokens=256,
-        do_sample=True,
-        top_p=0.05,
-        num_return_sequences=1)
+        # Check for encoding issues and generate the answer
+        if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
+            print("Length of problematic input ids: " + str(input_ids.shape))
+            print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+            assert False
+        outputs = model.generate(
+            input_ids=input_ids,
+            max_new_tokens=256,
+            do_sample=True,
+            top_p=0.05,
+            num_return_sequences=1)
 
-    answer = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
+        answer = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
+    else:
+            input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 
+            # Check for encoding issues and generate the answer
+            if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
+                print("Length of problematic input ids: " + str(input_ids.shape))
+                print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+                assert False
+            outputs = model.generate(
+                input_ids=input_ids,
+                max_length=256,
+                do_sample=True,
+                top_p=0.05,
+                num_return_sequences=1)
+
+            answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
     return answer
 
 def generate_synthetic_query_openai_approach(document: str, system_prompt: str, 

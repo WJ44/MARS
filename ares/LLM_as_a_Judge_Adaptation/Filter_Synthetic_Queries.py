@@ -20,8 +20,8 @@ from tqdm import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from sentence_transformers import SentenceTransformer
-# embedding_model = SentenceTransformer("BAAI/bge-m3")
-embedding_model = SentenceTransformer("multi-qa-mpnet-base-cos-v1")
+embedding_model = SentenceTransformer("BAAI/bge-m3")
+# embedding_model = SentenceTransformer("multi-qa-mpnet-base-cos-v1")
 
 def get_embedding(text: str, model: str = "text-embedding-ada-002") -> list:
     """
@@ -75,7 +75,7 @@ def generate_index(dataframe: pd.DataFrame) -> Dataset:
     dataframe['embeddings'] = dataframe["document"].progress_apply(lambda x: get_embedding(x, model='text-embedding-ada-002'))
     
     # Filter out rows where the embedding length is not 1536
-    dataframe = dataframe[dataframe['embeddings'].apply(lambda x: len(x)) == 768]
+    dataframe = dataframe[dataframe['embeddings'].apply(lambda x: len(x)) == 1024]
     
     # Convert dataframe to Hugging Face Dataset
     dataset = Dataset.from_pandas(dataframe)
@@ -115,7 +115,7 @@ def filter_synthetic_queries(queries_dataset: pd.DataFrame, document_index) -> p
         question_embedding = np.array(embedding).astype(np.float32)
         
         # Ensure question_embedding is a 2D array with shape (1, 1536)
-        if question_embedding.shape != (768,):
+        if question_embedding.shape != (1024,):
             print(f"Warning: Invalid embedding shape {question_embedding.shape} for query '{question}'. Skipping.")
             continue
         question_embedding = question_embedding.reshape(1, -1)

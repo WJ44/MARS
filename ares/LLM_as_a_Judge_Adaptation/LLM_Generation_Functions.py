@@ -607,3 +607,100 @@ tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset: bool =
     query = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     return query
+
+def generate_wrong_language_answer_llm_approach(document: str, question: str, prompt: str, length_of_fewshot_prompt: int, 
+device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_language=None) -> str:
+    """
+    Generates an answer using a language model based on the provided document and question.
+
+    This function constructs a prompt for the language model by appending the document and question to a base prompt.
+    It then encodes the prompt and checks if the total token length exceeds the model's maximum input size.
+    If it does, the document is truncated to fit. The function finally generates an answer using the model.
+
+    Args:
+        document (str): The document text to be used for generating the answer.
+        question (str): The question text based on the document.
+        prompt (str): The initial prompt text to which the document and question will be appended.
+        length_of_fewshot_prompt (int): The ordinal number of the current example in the context of few-shot learning.
+        device: str: The device (CPU/GPU) on which the tokenizer and model are loaded.
+        tokenizer: The tokenizer used for encoding the text.
+        model: The model used for generating the answer.
+        for_fever_dataset (bool, optional): Flag to indicate if the function is being used for the FEVER dataset. Defaults to False.
+        for_wow_dataset (bool, optional): Flag to indicate if the function is being used for the WoW dataset. Defaults to False.
+
+    Returns:
+        str: The generated answer text.
+    """
+    # Construct the prompt without the document based on the dataset type
+    prompt_without_document = prompt + "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
+    if for_fever_dataset:
+        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): \nAnswer ({document_language}): "
+    elif for_wow_dataset:
+        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): \nResponse ({document_language}): "
+    else:
+        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): \nAnswer ({document_language}): "
+
+    # Calculate the token lengths for the prompt, document, and question
+    prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors='pt').to(device).shape[1]
+    document_length = tokenizer.encode(document, return_tensors='pt').to(device).shape[1]
+    question_length = tokenizer.encode(question, return_tensors='pt').to(device).shape[1]
+
+    # Check if the total length exceeds the model's maximum input size and truncate if necessary
+    if prompt_tokens_length + document_length + question_length + 100 >= 2048:
+        reduction_length = prompt_tokens_length + question_length + 100
+        encoded_input = tokenizer(document, max_length=2048 - reduction_length, truncation=True, return_tensors='pt')
+        truncated_document = tokenizer.decode(encoded_input['input_ids'][0][:2048 - reduction_length]) 
+        document = truncated_document.replace("</s>", "")
+
+    # Append the document and question to the prompt
+    prompt += "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
+    prompt += f"Document ({document_language}): " + document + "\n"
+    if for_fever_dataset:
+        prompt += f"Statement ({query_language}): " + question + "\n"
+        prompt += f"Answer ({document_language}): "
+    elif for_wow_dataset:
+        prompt += f"Dialogue ({query_language}): " + question + "\n"
+        prompt += f"Response ({document_language}): "
+    else:
+        prompt += f"Question ({query_language}): " + question + "\n"
+        prompt += f"Answer ({document_language}): "
+
+    # Encode the complete prompt
+    if "aya" in model.config.model_type:
+        prompt = [{"role": "user", "content": prompt}]
+
+        input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
+        prompt_len = len(input_ids[0])
+        # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
+
+        # Check for encoding issues and generate the answer
+        if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
+            print("Length of problematic input ids: " + str(input_ids.shape))
+            print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+            assert False
+        outputs = model.generate(
+            input_ids=input_ids,
+            max_new_tokens=256,
+            do_sample=True,
+            top_p=0.05,
+            num_return_sequences=1)
+
+        answer = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
+    else:
+            input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
+
+            # Check for encoding issues and generate the answer
+            if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
+                print("Length of problematic input ids: " + str(input_ids.shape))
+                print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+                assert False
+            outputs = model.generate(
+                input_ids=input_ids,
+                max_length=256,
+                do_sample=True,
+                top_p=0.05,
+                num_return_sequences=1)
+
+            answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    return answer

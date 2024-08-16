@@ -11,8 +11,8 @@ from datasets import load_dataset
 #TODO human relevance judgement set
 
 indexes = {
-    "en": json.load(open("multilingual_data/mlqa_index_en.json", "r")),
-    "de": json.load(open("multilingual_data/mlqa_index_de.json", "r"))
+    "en": json.load(open("multilingual_data/mlqa_index_en_dev.json", "r")),
+    "de": json.load(open("multilingual_data/mlqa_index_de_dev.json", "r"))
 }
 
 mlqa_en_en_total = load_dataset("facebook/mlqa", name="mlqa.en.en")
@@ -61,6 +61,40 @@ dataset_de_de["article_de"] = [indexes["de"][id] for id in mlqa_de_de["id"]]
 
 dataset_merged = pd.merge(dataset_en_en, dataset_de_de, on="id")
 
+# few_shot = dataset_merged.sample(n=4, random_state=40)
+# dataset_merged = dataset_merged.drop(few_shot.index)
+
+# few_shot["Context_Relevance_Label"] = "Yes"
+# few_shot["Answer_Faithfulness_Label"] = "Yes"
+# few_shot["Answer_Relevance_Label"] = "Yes"
+# few_shot["Language_Consistency_Label"] = "Yes"
+# few_shot["Contradictory_Answer"] = "TODO" # Added by hand
+
+# few_shot_en_en = few_shot[["Document_en", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]].copy()
+# few_shot_de_de = few_shot[["Document_de", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]].copy()
+# few_shot_en_de = few_shot[["Document_en", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]].copy()
+# few_shot_de_en = few_shot[["Document_de", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]].copy()
+
+# few_shot_en_de_wrong = few_shot[["Document_en", "Answer_en", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]].copy()
+# few_shot_de_en_wrong = few_shot[["Document_de", "Answer_de", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]].copy()
+# few_shot_en_de_wrong["Language_Consistency_Label"] = "No"
+# few_shot_de_en_wrong["Language_Consistency_Label"] = "No"
+
+# few_shot_en_en.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
+# few_shot_de_de.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
+# few_shot_en_de.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
+# few_shot_de_en.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
+# few_shot_en_de_wrong.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
+# few_shot_de_en_wrong.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
+
+# few_shot_en_de = pd.concat([few_shot_en_de, few_shot_en_de_wrong], axis=0, ignore_index=True)
+# few_shot_de_en = pd.concat([few_shot_de_en, few_shot_de_en_wrong], axis=0, ignore_index=True)
+
+# few_shot_en_en.to_csv("multilingual_data/few_shot_en_en.tsv", sep="\t", index=False)
+# few_shot_de_de.to_csv("multilingual_data/few_shot_de_de.tsv", sep="\t", index=False)
+# few_shot_en_de.to_csv("multilingual_data/few_shot_en_de.tsv", sep="\t", index=False)
+# few_shot_de_en.to_csv("multilingual_data/few_shot_de_en.tsv", sep="\t", index=False)
+
 
 dataset = pd.DataFrame()
 
@@ -71,6 +105,8 @@ dataset["id"] = dataset_merged["id"]
 dataset["doc_lang"] = "en"
 dataset["qa_lang"] = "en"
 
+# dataset.to_csv("multilingual_data/mlqa_test_en_en.tsv", sep="\t", index=False)
+
 dataset2 = pd.DataFrame()
 
 dataset2["Document"] = dataset_merged["Document_de"]
@@ -79,6 +115,8 @@ dataset2["Query"] = dataset_merged["Query_de"]
 dataset2["id"] = dataset_merged["id"]
 dataset2["doc_lang"] = "de"
 dataset2["qa_lang"] = "de"
+
+# dataset2.to_csv("multilingual_data/mlqa_test_de_de.tsv", sep="\t", index=False)
 
 dataset3 = pd.DataFrame()
 
@@ -89,6 +127,8 @@ dataset3["id"] = dataset_merged["id"]
 dataset3["doc_lang"] = "de"
 dataset3["qa_lang"] = "en"
 
+# dataset3.to_csv("multilingual_data/mlqa_test_de_en.tsv", sep="\t", index=False)
+
 dataset4 = pd.DataFrame()
 
 dataset4["Document"] = dataset_merged["Document_en"]
@@ -97,6 +137,8 @@ dataset4["Query"] = dataset_merged["Query_de"]
 dataset4["id"] = dataset_merged["id"]
 dataset4["doc_lang"] = "en"
 dataset4["qa_lang"] = "de"
+
+# dataset4.to_csv("multilingual_data/mlqa_test_en_de.tsv", sep="\t", index=False)
 
 dataset = pd.concat([dataset, dataset2, dataset3, dataset4], axis=0, ignore_index=True)
 

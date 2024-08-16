@@ -2,5 +2,3 @@
 *
 # Except this file
 !.gitignore
-!mlqa_index_de.json
-!mlqa_index_en.json

@@ -32,7 +32,8 @@ from ares.LLM_as_a_Judge_Adaptation.LLM_Generation_Functions import (check_gener
                                                                       generate_contradictory_answer_examples,
                                                                       generate_contradictory_answer_from_context,
                                                                       generate_synthetic_query_llm_approach,
-                                                                      generate_synthetic_query_openai_approach)
+                                                                      generate_synthetic_query_openai_approach,
+                                                                      generate_wrong_language_answer_llm_approach)
 
 from ares.LLM_as_a_Judge_Adaptation.LLM_Synthetic_Generation import (generate_synthetic_query_api_approach,
                                                                     generate_synthetic_answer_api_approach,
@@ -264,7 +265,8 @@ def generate_few_shot_prompts(few_shot_prompt_filename: str, for_fever_dataset: 
     # Filter the prompts based on relevance and faithfulness labels
     answer_gen_few_shot_prompt = answer_gen_few_shot_prompt[
         (answer_gen_few_shot_prompt['Answer_Relevance_Label'] == "[[Yes]]") & 
-        (answer_gen_few_shot_prompt['Answer_Faithfulness_Label'] == "[[Yes]]")
+        (answer_gen_few_shot_prompt['Answer_Faithfulness_Label'] == "[[Yes]]") &
+        (answer_gen_few_shot_prompt['Language_Consistency_Label'] == "[[Yes]]")
     ]
     
     # Get the length of the few-shot prompt
@@ -291,6 +293,55 @@ def generate_few_shot_prompts(few_shot_prompt_filename: str, for_fever_dataset: 
         else:
             answer_gen_few_shot_examples += f"Question ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
             answer_gen_few_shot_examples += f"Answer ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
+    
+    return answer_gen_few_shot_examples, length_of_fewshot_prompt_answer_gen
+
+def generate_wrong_language_few_shot_prompts(few_shot_prompt_filename: str, for_fever_dataset: bool, for_wow_dataset: bool, document_language: str, query_language: str) -> tuple[str, int]:
+    """
+    Generates few-shot prompts for answer generation based on the provided dataset.
+
+    Args:
+        few_shot_prompt_filename (str): The filename of the TSV file containing the few-shot prompts.
+        for_fever_dataset (bool): Flag indicating if the prompts are for the FEVER dataset.
+        for_wow_dataset (bool): Flag indicating if the prompts are for the WoW dataset.
+
+    Returns:
+        tuple: A tuple containing the few-shot examples string and the length of the few-shot prompt.
+    """
+    # Load the few-shot prompt data
+    answer_gen_few_shot_prompt = pd.read_csv(few_shot_prompt_filename, sep="\t")
+    
+    # Filter the prompts based on relevance and faithfulness labels
+    answer_gen_few_shot_prompt = answer_gen_few_shot_prompt[
+        (answer_gen_few_shot_prompt['Answer_Relevance_Label'] == "[[Yes]]") & 
+        (answer_gen_few_shot_prompt['Answer_Faithfulness_Label'] == "[[Yes]]") &
+        (answer_gen_few_shot_prompt['Language_Consistency_Label'] == "[[No]]")
+    ]
+    
+    # Get the length of the few-shot prompt
+    length_of_fewshot_prompt_answer_gen = len(answer_gen_few_shot_prompt)
+    
+    # Rename 'Query' column to 'Question' if it exists
+    if "Query" in answer_gen_few_shot_prompt.columns:
+        answer_gen_few_shot_prompt['Question'] = answer_gen_few_shot_prompt['Query']
+    
+    # Initialize the few-shot examples string
+    answer_gen_few_shot_examples = ""
+    
+    # Construct the few-shot examples
+    for row in range(len(answer_gen_few_shot_prompt)):
+        answer_gen_few_shot_examples += f"Example {row + 1}:\n"
+        answer_gen_few_shot_examples += f"Document ({document_language}): {answer_gen_few_shot_prompt.iloc[row]['Document']}\n"
+        
+        if for_fever_dataset:
+            answer_gen_few_shot_examples += f"Statement ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
+            answer_gen_few_shot_examples += f"Answer ({document_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
+        elif for_wow_dataset:
+            answer_gen_few_shot_examples += f"Dialogue ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
+            answer_gen_few_shot_examples += f"Response ({document_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
+        else:
+            answer_gen_few_shot_examples += f"Question ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
+            answer_gen_few_shot_examples += f"Answer ({document_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
     
     return answer_gen_few_shot_examples, length_of_fewshot_prompt_answer_gen
 
@@ -502,12 +553,17 @@ def generate_synthetic_queries(documents: pd.DataFrame, settings: dict) -> pd.Da
     positive_queries_for_answers_df['Context_Relevance_Label'] = 'Yes'
     positive_queries_duplicate_df = positive_queries_for_answers_df.copy()
     positive_queries_duplicate_df['Context_Relevance_Label'] = 'Yes'
+    if settings['query_language'] != settings['document_language']:
+        positive_queries_duplicate2_df = positive_queries_for_answers_df.copy()
+        positive_queries_duplicate2_df['Context_Relevance_Label'] = 'Yes'
+    else:
+        positive_queries_duplicate2_df = pd.DataFrame()
     
     print(f"Generating negative queries for the remaining {len(second_half_documents)} documents...")
     negative_queries_df = generate_negative_synthetic_queries(positive_queries_df, second_half_documents, settings)
     negative_queries_df = negative_queries_df.sample(n=num_to_sample, random_state=42)
     
-    combined_queries_df = pd.concat([positive_queries_for_answers_df, positive_queries_duplicate_df, negative_queries_df], ignore_index=True)
+    combined_queries_df = pd.concat([positive_queries_for_answers_df, positive_queries_duplicate_df, positive_queries_duplicate2_df, negative_queries_df], ignore_index=True)
     save_synthetic_queries(combined_queries_df, settings['synthetic_queries_filename'])
 
     message = "Synthetic query generation completed."
@@ -517,7 +573,7 @@ def generate_synthetic_queries(documents: pd.DataFrame, settings: dict) -> pd.Da
     print(f"| {message} |")
     print("=" * box_width + "\n")
 
-    print(f"Total queries saved: {len(combined_queries_df)} (Positive: {len(positive_queries_for_answers_df)}, Duplicate: {len(positive_queries_duplicate_df)}, Negative: {len(negative_queries_df)})")
+    print(f"Total queries saved: {len(combined_queries_df)} (Positive: {len(positive_queries_for_answers_df)}, Duplicate: {len(positive_queries_duplicate_df)}, Duplicate2: {len(positive_queries_duplicate2_df)} Negative: {len(negative_queries_df)})")
 
     return combined_queries_df
 
@@ -629,6 +685,53 @@ def generate_contradictory_answers_wrapper(synthetic_queries: pd.DataFrame, answ
     )
     return synthetic_contradictory_answers
 
+
+def generate_wrong_language_answers(synthetic_queries: pd.DataFrame, answer_generation_settings: dict) -> pd.DataFrame:
+    """
+    Generate synthetic answers using the FLAN approach.
+
+    Args:
+        synthetic_queries (pd.DataFrame): DataFrame containing the synthetic queries.
+        answer_generation_settings (dict): Dictionary containing settings and parameters for answer generation.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the synthetic queries with generated answers.
+    """
+    # if answer_generation_settings['api_model']:
+    #     tqdm.pandas(desc=f"Generating answers... ({answer_generation_settings['model']})", total=synthetic_queries.shape[0])
+    #     synthetic_queries["generated_answer"] = synthetic_queries.progress_apply(
+    #         lambda x: generate_synthetic_answer_api_approach(
+    #             x["document"], 
+    #             x["synthetic_query"], 
+    #             answer_generation_settings['synthetic_valid_answer_prompt'], 
+    #             answer_generation_settings['answer_gen_few_shot_examples'], 
+    #             answer_generation_settings['length_of_fewshot_prompt_answer_gen'], 
+    #             answer_generation_settings['model'],  
+    #             answer_generation_settings['for_fever_dataset'], 
+    #             answer_generation_settings['for_wow_dataset']
+    #         ), 
+    #         axis=1
+    #     )
+    # else: 
+    tqdm.pandas(desc="Generating answers... (FLAN)", total=synthetic_queries.shape[0])
+    synthetic_queries["generated_answer"] = synthetic_queries.progress_apply(
+        lambda x: generate_wrong_language_answer_llm_approach(
+        x["document"], 
+        x["synthetic_query"], 
+        answer_generation_settings['wrong_language_answer_gen_few_shot_examples'], 
+        answer_generation_settings['length_of_fewshot_prompt_wrong_language_answer_gen'], 
+        answer_generation_settings['device'], 
+        answer_generation_settings['tokenizer'], 
+        answer_generation_settings['model'], 
+        answer_generation_settings['for_fever_dataset'], 
+        answer_generation_settings['for_wow_dataset'],
+        answer_generation_settings['document_language'],
+        answer_generation_settings['query_language']
+    ), 
+    axis=1
+    )
+    return synthetic_queries
+
 def process_embeddings(synthetic_queries: pd.DataFrame, answer_generation_settings: dict) -> pd.DataFrame:
     """
     Handle embedding generation and additional negatives/positives.
@@ -728,7 +831,10 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
         
         # Determine the number of documents to process for answers
         total_queries = len(synth_queries)
-        num_documents = total_queries // 3  # Since we have duplicated the first half
+        if answer_generation_settings['query_language'] != answer_generation_settings['document_language']:
+            num_documents = total_queries // 4  
+        else:
+            num_documents = total_queries // 3 # Since we have duplicated the first half
         half_num_documents = num_documents
         
         # Adjust for odd number of documents
@@ -770,6 +876,16 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
         synth_queries.loc[second_half_queries.index, 'generated_answer'] = second_half_queries['generated_answer']
         synth_queries.loc[second_half_queries.index, 'Answer_Faithfulness_Label'] = second_half_queries['Answer_Faithfulness_Label']
         synth_queries.loc[second_half_queries.index, 'Answer_Relevance_Label'] = second_half_queries['Answer_Relevance_Label']
+
+        if answer_generation_settings['query_language'] != answer_generation_settings['document_language']:
+            third_half_queries = synth_queries.iloc[2 * half_num_documents:3 * half_num_documents].copy()
+            third_half_queries = generate_wrong_language_answers(third_half_queries, answer_generation_settings)
+            third_half_queries = label_answers(third_half_queries)
+            third_half_queries['Language_Constency_Label'] = "No"
+
+            # Update the original dataframe with the generated wrong language answers
+            synth_queries.loc[third_half_queries.index, 'generated_answer'] = third_half_queries['generated_answer']
+            synth_queries.loc[third_half_queries.index, 'Language_Constency_Label'] = third_half_queries['Language_Constency_Label']
         
         # Save the synthetic queries with answers back to the file
         synth_queries.to_csv(synthetic_queries_filename, index=False, sep="\t")

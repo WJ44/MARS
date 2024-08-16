@@ -4,6 +4,7 @@ from .LLM_as_a_Judge_Adaptation.Generate_Synthetic_Queries_and_Answers import (
     load_few_shot_prompt,
     generate_contradictory_answers,
     generate_few_shot_prompts,
+    generate_wrong_language_few_shot_prompts,
     generate_synthetic_queries,
     Generate_Synthetic_Answers
 )
@@ -106,6 +107,10 @@ def synthetic_generator_config(
             few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
         )
 
+        wrong_language_answer_gen_few_shot_examples, length_of_fewshot_prompt_wrong_language_answer_gen = generate_wrong_language_few_shot_prompts(
+            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
+        )
+
         synthetic_queries_config = {
             'few_shot_examples': few_shot_examples,
             'length_of_fewshot_prompt': length_of_fewshot_prompt,
@@ -147,7 +152,10 @@ def synthetic_generator_config(
             'number_of_positives_added_ratio': number_of_positives_added_ratio,
             'regenerate_embeddings': regenerate_embeddings,
             'document_language': document_language,
-            'query_language': query_language
+            'query_language': query_language,
+            'wrong_language_answer_gen_few_shot_examples': wrong_language_answer_gen_few_shot_examples,
+            'length_of_fewshot_prompt_wrong_language_answer_gen': length_of_fewshot_prompt_wrong_language_answer_gen,
+
         }
 
         Generate_Synthetic_Answers(synthetic_queries_filename, synthetic_answers_config)

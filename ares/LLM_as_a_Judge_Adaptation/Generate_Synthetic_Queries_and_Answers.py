@@ -787,7 +787,7 @@ def shuffle_and_save(synthetic_queries: pd.DataFrame, synthetic_queries_filename
     """
     # Ensure specific conditions for rows where Context_Relevance_Label is "No"
     condition = synthetic_queries['Context_Relevance_Label'] == "No"
-    synthetic_queries.loc[condition, ['generated_answer', 'Answer_Relevance_Label', 'Answer_Faithfulness_Label']] = ""
+    synthetic_queries.loc[condition, ['generated_answer', 'Answer_Relevance_Label', 'Answer_Faithfulness_Label', 'Language_Consistency_Label']] = ""
     
     # Shuffle the synthetic queries DataFrame with a fixed random state for reproducibility
     synthetic_queries = synthetic_queries.sample(n=len(synthetic_queries), random_state=42)
@@ -891,7 +891,7 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
 
             # Update the original dataframe with the generated wrong language answers
             synth_queries.loc[third_half_queries.index, 'generated_answer'] = third_half_queries['generated_answer']
-            synth_queries.loc[third_half_queries.index, 'Language_Constency_Label'] = third_half_queries['Language_Constency_Label']
+            # synth_queries.loc[third_half_queries.index, 'Language_Constency_Label'] = third_half_queries['Language_Constency_Label']
         
         # Save the synthetic queries with answers back to the file
         synth_queries.to_csv(synthetic_queries_filename, index=False, sep="\t")

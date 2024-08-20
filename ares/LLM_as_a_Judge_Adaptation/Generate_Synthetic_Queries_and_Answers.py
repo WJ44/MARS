@@ -863,7 +863,8 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
         synth_queries.loc[first_half_queries.index, 'generated_answer'] = first_half_queries['generated_answer']
         synth_queries.loc[first_half_queries.index, 'Answer_Faithfulness_Label'] = first_half_queries['Answer_Faithfulness_Label']
         synth_queries.loc[first_half_queries.index, 'Answer_Relevance_Label'] = first_half_queries['Answer_Relevance_Label']
-        
+        synth_queries.loc[first_half_queries.index, 'Language_Consistency_Label'] = first_half_queries['Language_Consistency_Label']
+
         # Save the synthetic queries with positive answers back to the file
         synth_queries.to_csv(synthetic_queries_filename, index=False, sep="\t")
         print(f"Saved positive answers to: {synthetic_queries_filename}")

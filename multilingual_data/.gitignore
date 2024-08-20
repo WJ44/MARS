@@ -2,11 +2,5 @@
 *
 # Except this file
 !.gitignore
-!.few_shot_de_de.json
-!.few_shot_de_en.json
-!.few_shot_en_de.json
-!.few_shot_en_en.json
-!.mlqa_test_de_de.json
-!.mlqa_test_de_en.json
-!.mlqa_test_en_de.json
-!.mlqa_test_en_en.json
+!few_shot_*.tsv
+!mlqa_test_*.tsv

@@ -77,8 +77,7 @@ for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_la
         prompt += f"Question ({query_language}): "
 
     # Encode the complete prompt
-    print(model.config.model_type)
-    if "aya" in model.config.model_type:
+    if model.config.model_type == "cohere":
         prompt = [{"role": "user", "content": prompt}]
 
         input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
@@ -186,7 +185,7 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
         prompt += f"Answer ({query_language}): "
 
     # Encode the complete prompt
-    if "aya" in model.config.model_type:
+    if model.config.model_type == "cohere":
         prompt = [{"role": "user", "content": prompt}]
 
         input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
@@ -667,7 +666,7 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
         prompt += f"Answer ({document_language}): "
 
     # Encode the complete prompt
-    if "aya" in model.config.model_type:
+    if model.config.model_type == "cohere":
         prompt = [{"role": "user", "content": prompt}]
 
         input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)

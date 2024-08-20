@@ -64,10 +64,10 @@ dataset_merged = pd.merge(dataset_en_en, dataset_de_de, on="id")
 # few_shot = dataset_merged.sample(n=4, random_state=40)
 # dataset_merged = dataset_merged.drop(few_shot.index)
 
-# few_shot["Context_Relevance_Label"] = "Yes"
-# few_shot["Answer_Faithfulness_Label"] = "Yes"
-# few_shot["Answer_Relevance_Label"] = "Yes"
-# few_shot["Language_Consistency_Label"] = "Yes"
+# few_shot["Context_Relevance_Label"] = "[[Yes]]"
+# few_shot["Answer_Faithfulness_Label"] = "[[Yes]]"
+# few_shot["Answer_Relevance_Label"] = "[[Yes]]"
+# few_shot["Language_Consistency_Label"] = "[[Yes]]"
 # few_shot["Contradictory_Answer"] = "TODO" # Added by hand
 
 # few_shot_en_en = few_shot[["Document_en", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]].copy()
@@ -77,8 +77,8 @@ dataset_merged = pd.merge(dataset_en_en, dataset_de_de, on="id")
 
 # few_shot_en_de_wrong = few_shot[["Document_en", "Answer_en", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]].copy()
 # few_shot_de_en_wrong = few_shot[["Document_de", "Answer_de", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]].copy()
-# few_shot_en_de_wrong["Language_Consistency_Label"] = "No"
-# few_shot_de_en_wrong["Language_Consistency_Label"] = "No"
+# few_shot_en_de_wrong["Language_Consistency_Label"] = "[[No]]"
+# few_shot_de_en_wrong["Language_Consistency_Label"] = "[[No]]"
 
 # few_shot_en_en.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
 # few_shot_de_de.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]

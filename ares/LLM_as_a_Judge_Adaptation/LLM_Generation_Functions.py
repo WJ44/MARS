@@ -77,6 +77,7 @@ for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_la
         prompt += f"Question ({query_language}): "
 
     # Encode the complete prompt
+    print(model.config.model_type)
     if "aya" in model.config.model_type:
         prompt = [{"role": "user", "content": prompt}]
 

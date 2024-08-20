@@ -647,6 +647,11 @@ def label_answers(synthetic_queries: pd.DataFrame) -> pd.DataFrame:
     synthetic_queries["Answer_Relevance_Label"] = [
         check_generated_answer(synthetic_queries.iloc[i]['generated_answer']) for i in range(len(synthetic_queries))
     ]
+
+    # Label each generated answer for relevance
+    synthetic_queries["Language_Consistency_Label"] = [
+        check_generated_answer(synthetic_queries.iloc[i]['generated_answer']) for i in range(len(synthetic_queries))
+    ]
     
     return synthetic_queries
 
@@ -838,8 +843,8 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
         half_num_documents = num_documents
         
         # Adjust for odd number of documents
-        if num_documents % 2 != 0:
-            half_num_documents += 1
+        # if num_documents % 2 != 0:
+        #     half_num_documents += 1
 
         # Select first chunk queries for generating answers (excluding duplicates)
         first_half_queries = synth_queries.head(half_num_documents)

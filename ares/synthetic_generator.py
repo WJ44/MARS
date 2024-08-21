@@ -111,11 +111,6 @@ def synthetic_generator_config(
             few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
         )
 
-        print("few_shot_examples: ", few_shot_examples)
-        print("few_shot_examples_for_contradictory_answers: ", few_shot_examples_for_contradictory_answers)
-        print("answer_gen_few_shot_examples: ", answer_gen_few_shot_examples)
-        print("wrong_language_answer_gen_few_shot_examples: ", wrong_language_answer_gen_few_shot_examples)
-
         synthetic_queries_config = {
             'few_shot_examples': few_shot_examples,
             'length_of_fewshot_prompt': length_of_fewshot_prompt,

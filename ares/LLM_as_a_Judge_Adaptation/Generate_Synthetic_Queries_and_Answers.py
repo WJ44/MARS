@@ -891,7 +891,8 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
 
             # Update the original dataframe with the generated wrong language answers
             synth_queries.loc[third_half_queries.index, 'generated_answer'] = third_half_queries['generated_answer']
-            synth_queries.loc[third_half_queries.index, 'Language_Constency_Label'] = third_half_queries['Language_Constency_Label']
+            print(third_half_queries)
+            # synth_queries.loc[third_half_queries.index, 'Language_Constency_Label'] = third_half_queries['Language_Constency_Label']
         
         # Save the synthetic queries with answers back to the file
         synth_queries.to_csv(synthetic_queries_filename, index=False, sep="\t")

@@ -10,9 +10,9 @@ synth_config = {
     "query_language": "English"
 }
 
-# ares = ARES(synthetic_query_generator=synth_config)
-# results = ares.generate_synthetic_data()
-# print(results)
+ares = ARES(synthetic_query_generator=synth_config)
+results = ares.generate_synthetic_data()
+print(results)
 
 # synth_config = {
 #     "document_filepaths": ["multilingual_data/mlqa_test_en_de.tsv"],

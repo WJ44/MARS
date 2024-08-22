@@ -534,13 +534,14 @@ def generate_synthetic_queries(documents: pd.DataFrame, settings: dict) -> pd.Da
 
     total_documents = len(documents)
     initial_queries_per_document = 2
-    chunk_size = total_documents
     
     num_documents = len(documents)
     half_num_documents = num_documents // 2
     
     if num_documents % 2 != 0:
         half_num_documents += 1
+
+    chunk_size = half_num_documents
     
     first_half_documents = documents.head(half_num_documents)
     second_half_documents = documents.tail(num_documents - half_num_documents)

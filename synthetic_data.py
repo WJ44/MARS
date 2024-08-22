@@ -4,7 +4,7 @@ from ares import ARES
 #     "document_filepaths": ["multilingual_data/mlqa_test_en_en.tsv"],
 #     "few_shot_prompt_filename": "multilingual_data/few_shot_en_en.tsv",
 #     "synthetic_queries_filenames": ["multilingual_data/synthetic_queries_mlqa_en-en.tsv"],
-#     "documents_sampled": 7, # 4513
+#     "documents_sampled": 4513, # 4513
 #     "model_choice": "CohereForAI/aya-23-35B",
 #     "document_language": "English",
 #     "query_language": "English"
@@ -18,7 +18,7 @@ synth_config = {
     "document_filepaths": ["multilingual_data/mlqa_test_en_de.tsv"],
     "few_shot_prompt_filename": "multilingual_data/few_shot_en_de.tsv",
     "synthetic_queries_filenames": ["multilingual_data/synthetic_queries_mlqa_en-de.tsv"],
-    "documents_sampled": 4513,
+    "documents_sampled": 7,
     "model_choice": "CohereForAI/aya-23-35B",
     "document_language": "English",
     "query_language": "German"

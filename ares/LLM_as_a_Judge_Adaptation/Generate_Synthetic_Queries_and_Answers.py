@@ -561,7 +561,7 @@ def generate_synthetic_queries(documents: pd.DataFrame, settings: dict) -> pd.Da
     
     print(f"Generating negative queries for the remaining {len(second_half_documents)} documents...")
     negative_queries_df = generate_negative_synthetic_queries(positive_queries_df, second_half_documents, settings)
-    negative_queries_df = negative_queries_df.sample(n=num_to_sample, random_state=42)
+    negative_queries_df = negative_queries_df.sample(n=len(second_half_documents), random_state=42)
     
     combined_queries_df = pd.concat([positive_queries_for_answers_df, positive_queries_duplicate_df, positive_queries_duplicate2_df, negative_queries_df], ignore_index=True)
     save_synthetic_queries(combined_queries_df, settings['synthetic_queries_filename'])
@@ -836,15 +836,13 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
         
         # Determine the number of documents to process for answers
         total_queries = len(synth_queries)
+        if total_queries % 2 != 0:
+            total_queries += 1
         if answer_generation_settings['query_language'] != answer_generation_settings['document_language']:
             num_documents = total_queries // 4  
         else:
             num_documents = total_queries // 3 # Since we have duplicated the first half
         half_num_documents = num_documents
-        
-        # Adjust for odd number of documents
-        # if num_documents % 2 != 0:
-        #     half_num_documents += 1
 
         # Select first chunk queries for generating answers (excluding duplicates)
         first_half_queries = synth_queries.head(half_num_documents)

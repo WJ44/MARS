@@ -152,13 +152,16 @@ dataset_copy_3 = dataset.copy()
 
 dataset_copy_1["Document"] = incorrect_passages
 dataset_copy_1["Context_Relevance_Label"] = context_relevance_labels
+dataset_copy_1 = dataset_copy_1.sample(n=len(dataset_copy_1), random_state=42)
 
 dataset_copy_2["Answer"] = incorrect_answers
 dataset_copy_2["Answer_Faithfulness_Label"] = answer_faithfulness_labels
 dataset_copy_2["Answer_Relevance_Label"] = answer_relevance_labels
+dataset_copy_2 = dataset_copy_2.sample(n=len(dataset_copy_2), random_state=42)
 
 dataset_copy_3["Answer"] = incorrect_language
 dataset_copy_3["Language_Consistency_Label"] = language_consistency_labels
+dataset_copy_3 = dataset_copy_3.sample(n=len(dataset_copy_3), random_state=42)
 
 # Add labels for positive examples
 dataset['Context_Relevance_Label'] = 1

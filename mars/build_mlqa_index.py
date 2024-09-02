@@ -1,8 +1,11 @@
 import json
 
+
+# Saves the artice title for each passage, this information is not easily available in the dataset as published on Hugginface
 langs = ["en", "de"]
 for lang in langs:
-    data = json.load(open(f"multilingual_data/MLQA_V1/dev/dev-context-{lang}-question-{lang}.json"))
+    with open(f"multilingual_data/MLQA_V1/train/train-context-{lang}-question-{lang}.json", "r") as f:
+        data = json.load(f)
 
     qa_article_map = {}
 

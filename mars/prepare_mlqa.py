@@ -5,6 +5,8 @@ import pandas as pd
 from tqdm import tqdm
 from datasets import load_dataset
 
+#Note: Then negative Answer_Faithfulness samples are not a good representation of hallucinated answers. They are just random answers from the dataset.
+
 random.seed(42)
 
 # Constants for file paths
@@ -62,6 +64,8 @@ def create_few_shot_files(few_shot):
 
     few_shot_en_de_wrong = few_shot_files["mlqa_test_few_shot_en_de.tsv"].copy()
     few_shot_de_en_wrong = few_shot_files["mlqa_test_few_shot_de_en.tsv"].copy()
+    few_shot_en_de_wrong["Answer_de"] = few_shot_de_en_wrong["Answer_en"]
+    few_shot_de_en_wrong["Answer_en"] = few_shot_en_de_wrong["Answer_de"]
     few_shot_en_de_wrong["Language_Consistency_Label"] = "[[No]]"
     few_shot_de_en_wrong["Language_Consistency_Label"] = "[[No]]"
 
@@ -169,7 +173,7 @@ dataset['Answer_Faithfulness_Label'] = 1
 dataset['Answer_Relevance_Label'] = 1
 dataset['Language_Consistency_Label'] = 1
 
-# Create datasets with different positive-negative ratios
+# Create datasets with different positive/negative ratios
 positive_negative_ratios = [0.5, 0.525, 0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7]
 for ratio in positive_negative_ratios:
     negatives_to_add = int((1 - ratio) / ratio * len(dataset_copy_1))

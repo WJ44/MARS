@@ -1,7 +1,7 @@
 from ares import ARES
 
 classifier_config = {
-    "training_dataset": ["multilingual_data/synthethic_queries_mlqa_en-en.tsv"],
+    "training_dataset": ["multilingual_data/synthetic_queries_mlqa_en-en.tsv"],
     "validation_set": ["multilingual_data/mlqa_test_ratio_0.7.tsv"],
     "label_column": ["Context_Relevance_Label", "Answer_Relevance_Label", "Language_Consitency_Label"],
     "model_choice": "microsoft/mdeberta-v3-base",

@@ -15,5 +15,5 @@ for lang in langs:
             for qa in paragraph["qas"]:
                 qa_article_map[qa["id"]] = article["title"]
 
-    with open(f"multilingual_data/mlqa_index_{lang}_dev.json", "w") as f:
+    with open(f"multilingual_data/mlqa_index_{lang}_test.json", "w") as f:
         json.dump(qa_article_map, f)

@@ -2,5 +2,5 @@
 *
 # Except this file
 !.gitignore
-!attri_qa_test_*.tsv
-!mlqa_test_*.tsv
+!*_few_shot_*.tsv
+!synthetic_queries_*.tsv

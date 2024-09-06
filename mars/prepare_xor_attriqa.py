@@ -4,6 +4,8 @@ import os
 
 from tqdm import tqdm
 
+# Requires the XOR-AttribQA dataset from: https://storage.googleapis.com/gresearch/xor_attriqa/xor_attriqa.zip (https://github.com/google-research/google-research/tree/master/xor_attriqa)
+
 random.seed(42)
 
 DATASET_PATH = "multilingual_data/xor_attriqa/in-language/ja.jsonl"

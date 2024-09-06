@@ -154,7 +154,7 @@ def load_documents(document_filepath: str, clean_documents: bool, documents_samp
             sys.exit(f"Error reading the file {document_filepath}: {e}")
 
     initial_count = len(documents)
-    documents = documents[documents['document'].str.split().apply(len) >= 50]  # Filter documents with less than 50 words.
+    documents = documents[documents['document'].str.split().apply(len) >= 50]  # Filter documents with less than 50 words. #TODO does not work for Japanese
     after_filter_count = len(documents)
 
     count = initial_count - after_filter_count

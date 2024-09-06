@@ -163,5 +163,5 @@ for ratio in positive_negative_ratios:
     dataset_combined = pd.concat([dataset, dataset_copy_1[:negatives_to_add], dataset_copy_2[:negatives_to_add], dataset_copy_3[:negatives_to_add], dataset_copy_4[:negatives_to_add]], axis=0, ignore_index=True)
     dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)
 
-    file_path = f"multilingual_data/attri_qa_test_ratio{ratio}.tsv"
+    file_path = f"multilingual_data/attri_qa_test_ratio_{ratio}.tsv"
     dataset_combined.to_csv(file_path, sep="\t", index=False)

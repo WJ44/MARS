@@ -9,9 +9,11 @@ from datasets import load_dataset
 
 random.seed(42)
 
+SPLIT = "dev"
+
 # Constants for file paths
-EN_INDEX_PATH = "multilingual_data/mlqa_index_en_test.json"
-DE_INDEX_PATH = "multilingual_data/mlqa_index_de_test.json"
+EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
+DE_INDEX_PATH = f"multilingual_data/mlqa_index_de_{SPLIT}.json"
 
 # Load external information about MLQA dataset
 with open(EN_INDEX_PATH, "r") as f:
@@ -23,16 +25,16 @@ indexes = {"en": indexes_en, "de": indexes_de}
 
 def load_and_process_dataset(language_code):
     mlqa_total = load_dataset("facebook/mlqa", name=f"mlqa.{language_code}.{language_code}")
-    mlqa_test = mlqa_total["test"].to_pandas()
+    mlqa_split = mlqa_total["validation" if SPLIT == "dev" else SPLIT].to_pandas()
     
-    wikipedia_answers = [mlqa_test.iloc[row]["answers"]["text"][0] for row in tqdm(range(len(mlqa_test)))]
+    wikipedia_answers = [mlqa_split.iloc[row]["answers"]["text"][0] for row in tqdm(range(len(mlqa_split)))]
     
     dataset = pd.DataFrame()
-    dataset[f"Document_{language_code}"] = mlqa_test["context"]
+    dataset[f"Document_{language_code}"] = mlqa_split["context"]
     dataset[f"Answer_{language_code}"] = wikipedia_answers
-    dataset[f"Query_{language_code}"] = mlqa_test["question"]
-    dataset["id"] = mlqa_test["id"]
-    dataset[f"article_{language_code}"] = [indexes[language_code][id] for id in mlqa_test["id"]]
+    dataset[f"Query_{language_code}"] = mlqa_split["question"]
+    dataset["id"] = mlqa_split["id"]
+    dataset[f"article_{language_code}"] = [indexes[language_code][id] for id in mlqa_split["id"]]
     
     return dataset
 
@@ -56,27 +58,27 @@ def create_few_shot_files(few_shot):
     few_shot["Contradictory_Answer"] = "TODO"  # Added by hand
 
     few_shot_files = {
-        "mlqa_test_few_shot_en_en.tsv": few_shot[["Document_en", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
-        "mlqa_test_few_shot_de_de.tsv": few_shot[["Document_de", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
-        "mlqa_test_few_shot_en_de.tsv": few_shot[["Document_en", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
-        "mlqa_test_few_shot_de_en.tsv": few_shot[["Document_de", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
+        f"mlqa_{SPLIT}_few_shot_en_en.tsv": few_shot[["Document_en", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
+        f"mlqa_{SPLIT}_few_shot_de_de.tsv": few_shot[["Document_de", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
+        f"mlqa_{SPLIT}_few_shot_en_de.tsv": few_shot[["Document_en", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
+        f"mlqa_{SPLIT}_few_shot_de_en.tsv": few_shot[["Document_de", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
     }
 
-    few_shot_en_de_wrong = few_shot_files["mlqa_test_few_shot_en_de.tsv"].copy()
-    few_shot_de_en_wrong = few_shot_files["mlqa_test_few_shot_de_en.tsv"].copy()
+    few_shot_en_de_wrong = few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"].copy()
+    few_shot_de_en_wrong = few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"].copy()
     few_shot_en_de_wrong["Answer_de"] = few_shot_de_en_wrong["Answer_en"]
     few_shot_de_en_wrong["Answer_en"] = few_shot_en_de_wrong["Answer_de"]
     few_shot_en_de_wrong["Language_Consistency_Label"] = "[[No]]"
     few_shot_de_en_wrong["Language_Consistency_Label"] = "[[No]]"
 
-    few_shot_files["mlqa_test_few_shot_en_de.tsv"] = pd.concat([few_shot_files["mlqa_test_few_shot_en_de.tsv"], few_shot_en_de_wrong], axis=0, ignore_index=True)
-    few_shot_files["mlqa_test_few_shot_de_en.tsv"] = pd.concat([few_shot_files["mlqa_test_few_shot_de_en.tsv"], few_shot_de_en_wrong], axis=0, ignore_index=True)
+    few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"], few_shot_en_de_wrong], axis=0, ignore_index=True)
+    few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"], few_shot_de_en_wrong], axis=0, ignore_index=True)
 
     for filename, df in few_shot_files.items():
         df.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
         df.to_csv(f"multilingual_data/{filename}", sep="\t", index=False)
 
-if not os.path.exists("multilingual_data/mlqa_test_few_shot_en_en.tsv"):
+if SPLIT == "test" and not os.path.exists(f"multilingual_data/mlqa_{SPLIT}_few_shot_en_en.tsv"):
     create_few_shot_files(few_shot)
 
 # Function to create dataset files
@@ -91,17 +93,17 @@ def create_dataset_file(dataset, doc_lang, qa_lang, filename):
     dataset_copy.to_csv(filename, sep="\t", index=False)
 
 # Create monolingual and cross-lingual datasets
-create_dataset_file(dataset_merged, "en", "en", "multilingual_data/mlqa_test_en_en.tsv")
-create_dataset_file(dataset_merged, "de", "de", "multilingual_data/mlqa_test_de_de.tsv")
-create_dataset_file(dataset_merged, "de", "en", "multilingual_data/mlqa_test_de_en.tsv")
-create_dataset_file(dataset_merged, "en", "de", "multilingual_data/mlqa_test_en_de.tsv")
+create_dataset_file(dataset_merged, "en", "en", f"multilingual_data/mlqa_{SPLIT}_en_en.tsv")
+create_dataset_file(dataset_merged, "de", "de", f"multilingual_data/mlqa_{SPLIT}_de_de.tsv")
+create_dataset_file(dataset_merged, "de", "en", f"multilingual_data/mlqa_{SPLIT}_de_en.tsv")
+create_dataset_file(dataset_merged, "en", "de", f"multilingual_data/mlqa_{SPLIT}_en_de.tsv")
 
 # Combine all datasets
 dataset = pd.concat([
-    pd.read_csv("multilingual_data/mlqa_test_en_en.tsv", sep="\t"),
-    pd.read_csv("multilingual_data/mlqa_test_de_de.tsv", sep="\t"),
-    pd.read_csv("multilingual_data/mlqa_test_de_en.tsv", sep="\t"),
-    pd.read_csv("multilingual_data/mlqa_test_en_de.tsv", sep="\t")
+    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_en_en.tsv", sep="\t"),
+    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_de_de.tsv", sep="\t"),
+    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_de_en.tsv", sep="\t"),
+    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_en_de.tsv", sep="\t")
 ], axis=0, ignore_index=True)
 
 # Precompute possible incorrect passages and answers
@@ -181,5 +183,5 @@ for ratio in positive_negative_ratios:
     dataset_combined = pd.concat([dataset, dataset_copy_1[:negatives_to_add], dataset_copy_2[:negatives_to_add], dataset_copy_3[:negatives_to_add]], axis=0, ignore_index=True)
     dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)
 
-    file_path = f"multilingual_data/mlqa_test_ratio_{ratio}.tsv"
+    file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}.tsv"
     dataset_combined.to_csv(file_path, sep="\t", index=False)

@@ -875,7 +875,7 @@ device: torch.device, eval_dataloader: DataLoader, inference_times: list) -> tup
     model.load_state_dict(torch.load(checkpoint_path))
 
     print("Beginning Evaluation")
-    metric = load_metric("accuracy")
+    metric = load_metric("accuracy", trust_remote_code=True)
 
     total_predictions = torch.FloatTensor([]).to(device)
     total_references = torch.FloatTensor([]).to(device)

@@ -4,7 +4,7 @@ classifier_config = {
     "training_dataset": ["multilingual_data/synthetic_queries_mlqa_en-en.tsv", "multilingual_data/synthetic_queries_mlqa_en-de.tsv", "multilingual_data/synthetic_queries_mlqa_de-en.tsv", "multilingual_data/synthetic_queries_mlqa_de-de.tsv"],
     "training_dataset_path": "multilingual_data/synthetic_queries_mlqa.tsv",
     "validation_set": ["multilingual_data/mlqa_dev_ratio_0.7.tsv"],
-    "label_column": ["Context_Relevance_Label", "Answer_Relevance_Label", "Language_Consitency_Label"],
+    "label_column": ["Context_Relevance_Label", "Answer_Relevance_Label", "Language_Consistency_Label"],
     "model_choice": "microsoft/mdeberta-v3-base",
     "num_epochs": 10,
     "patience_value": 3,

@@ -256,45 +256,47 @@ def calculate_ppi(Y_labeled: np.ndarray, Yhat_labeled: np.ndarray,
     tuple: A tuple containing the average PPI confidence interval, the average classical confidence interval, and the imputed-only confidence interval.
     """
     
-    n_max = Y_labeled.shape[0]
-    ns = np.linspace(0, n_max, 20).astype(int)
+    return pp_mean_iid_asymptotic(Y_labeled, Yhat_labeled, Yhat_unlabeled, alpha), None, None
 
-    # Imputed-only estimate
-    imputed_estimate = (Yhat_labeled.sum() + Yhat_unlabeled.sum()) / (Yhat_labeled.shape[0] + Yhat_unlabeled.shape[0])
+    # n_max = Y_labeled.shape[0]
+    # ns = np.linspace(0, n_max, 20).astype(int)
 
-    # Initialize arrays to store confidence intervals
-    ci = np.zeros((num_trials, ns.shape[0], 2))
-    ci_classical = np.zeros((num_trials, ns.shape[0], 2))
+    # # Imputed-only estimate
+    # imputed_estimate = (Yhat_labeled.sum() + Yhat_unlabeled.sum()) / (Yhat_labeled.shape[0] + Yhat_unlabeled.shape[0])
 
-    # Run prediction-powered inference and classical inference for many values of n
-    for j in tqdm(range(num_trials), desc="Trials"):  # Wrap the outer loop with tqdm for the progress bar
-        for i, n in enumerate(ns):  # Iterate over ns with an index
-            rand_idx = np.random.permutation(Y_labeled.shape[0])
-            f = Yhat_labeled.astype(float)[rand_idx[:n]]
-            y = Y_labeled.astype(float)[rand_idx[:n]]
-            output = pp_mean_iid_asymptotic(y, f, Yhat_unlabeled, alpha)
-            ci[j, i, :] = output
-            # Classical interval
-            try:
-                if n == 0:
-                    ci_classical[j, i, :] = [0, 0]
-                else:
-                    ci_classical[j, i, :] = binomial_iid(n, alpha, y.mean())
-            except:
-                avg_ci_classical = None
+    # # Initialize arrays to store confidence intervals
+    # ci = np.zeros((num_trials, ns.shape[0], 2))
+    # ci_classical = np.zeros((num_trials, ns.shape[0], 2))
 
-    avg_ci = ci.mean(axis=0)[-1]
+    # # Run prediction-powered inference and classical inference for many values of n
+    # for j in tqdm(range(num_trials), desc="Trials"):  # Wrap the outer loop with tqdm for the progress bar
+    #     for i, n in enumerate(ns):  # Iterate over ns with an index
+    #         rand_idx = np.random.permutation(Y_labeled.shape[0])
+    #         f = Yhat_labeled.astype(float)[rand_idx[:n]]
+    #         y = Y_labeled.astype(float)[rand_idx[:n]]
+    #         output = pp_mean_iid_asymptotic(y, f, Yhat_unlabeled, alpha)
+    #         ci[j, i, :] = output
+    #         # Classical interval
+    #         try:
+    #             if n == 0:
+    #                 ci_classical[j, i, :] = [0, 0]
+    #             else:
+    #                 ci_classical[j, i, :] = binomial_iid(n, alpha, y.mean())
+    #         except:
+    #             avg_ci_classical = None
 
-    try:
-        ci_imputed = binomial_iid(Yhat_unlabeled.shape[0], alpha, imputed_estimate)
-    except:
-        ci_imputed = None
-    try:
-        avg_ci_classical = ci_classical.mean(axis=0)[-1]
-    except:
-        avg_ci_classical = None
+    # avg_ci = ci.mean(axis=0)[-1]
 
-    return avg_ci, avg_ci_classical, ci_imputed
+    # try:
+    #     ci_imputed = binomial_iid(Yhat_unlabeled.shape[0], alpha, imputed_estimate)
+    # except:
+    #     ci_imputed = None
+    # try:
+    #     avg_ci_classical = ci_classical.mean(axis=0)[-1]
+    # except:
+    #     avg_ci_classical = None
+
+    # return avg_ci, avg_ci_classical, ci_imputed
 
 def begin(evaluation_datasets: list, checkpoints: list, labels: list, 
         few_shot_examples_filepath: str) -> pd.DataFrame:

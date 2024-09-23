@@ -177,7 +177,7 @@ dataset['Language_Consistency_Label'] = 1
 
 # Create datasets with different positive/negative ratios
 positive_negative_ratios = [0.5, 0.525, 0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7]
-ids = dataset["id"].unique()
+ids = pd.DataFrame(dataset["id"].unique())
 ids_copy_1 = ids.copy()
 ids_copy_2 = ids.copy()
 ids_copy_3 = ids.copy()

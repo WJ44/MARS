@@ -9,7 +9,7 @@ for lang1, lang2 in [("en", "en"), ("de", "de"), ("de", "en"), ("en", "de")]:
         "labels": ["Context_Relevance_Label", "Answer_Relevance_Label", "Language_Consistency_Label"],
         "gold_label_paths": [f"multilingual_data/mlqa_dev_ratio_0.5_{lang1}_{lang2}.tsv"],
         "model_choice": "microsoft/mdeberta-v3-base",
-        "assigned_batch_size": 8,
+        "assigned_batch_size": 64,
     }
 
     ares_module = ARES(ppi=ppi_config)
@@ -25,7 +25,7 @@ ppi_config = {
     "labels": ["Context_Relevance_Label", "Answer_Relevance_Label", "Language_Consistency_Label"],
     "gold_label_paths": ["multilingual_data/mlqa_dev_ratio_0.5.tsv"],
     "model_choice": "microsoft/mdeberta-v3-base",
-    "assigned_batch_size": 8,
+    "assigned_batch_size": 64,
 }
 
 ares_module = ARES(ppi=ppi_config)

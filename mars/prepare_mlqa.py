@@ -187,17 +187,17 @@ for ratio in positive_negative_ratios:
     
     positive_ids = ids.sample(n=num_positives, random_state=42)
     ids = ids.drop(positive_ids.index)
-    negative_ids_1 = ids_copy_1.drop(positive_ids.index).sample(n=negatives_to_add, random_state=42)
+    negative_ids_1 = ids_copy_1.sample(n=negatives_to_add, random_state=42)
     ids_copy_1 = ids_copy_1.drop(negative_ids_1.index)
-    negative_ids_2 = ids_copy_2.drop(positive_ids.index).drop(negative_ids_1.index).sample(n=negatives_to_add, random_state=42)
+    negative_ids_2 = ids_copy_2.sample(n=negatives_to_add, random_state=42)
     ids_copy_2 = ids_copy_2.drop(negative_ids_2.index)
-    negative_ids_3 = ids_copy_3.drop(positive_ids.index).drop(negative_ids_1.index).drop(negative_ids_2.index).sample(n=negatives_to_add, random_state=42)
+    negative_ids_3 = ids_copy_3.sample(n=negatives_to_add, random_state=42)
     ids_copy_3 = ids_copy_3.drop(negative_ids_3.index)
 
-    split = dataset[dataset["id"].isin(positive_ids)]
-    split_copy_1 = dataset_copy_1[dataset_copy_1["id"].isin(negative_ids_1)]
-    split_copy_2 = dataset_copy_2[dataset_copy_2["id"].isin(negative_ids_2)]
-    split_copy_3 = dataset_copy_3[dataset_copy_3["id"].isin(negative_ids_3)]
+    split = dataset[dataset["id"].isin(positive_ids[0])]
+    split_copy_1 = dataset_copy_1[dataset_copy_1["id"].isin(negative_ids_1[0])]
+    split_copy_2 = dataset_copy_2[dataset_copy_2["id"].isin(negative_ids_2[0])]
+    split_copy_3 = dataset_copy_3[dataset_copy_3["id"].isin(negative_ids_3[0])]
 
     dataset_combined = pd.concat([split, split_copy_1, split_copy_2, split_copy_3], axis=0, ignore_index=True)
     dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)

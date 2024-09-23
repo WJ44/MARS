@@ -1,7 +1,11 @@
 import json
 from scipy.stats import kendalltau
+import matplotlib.pyplot as plt
+import tikzplotlib
 
-file_path = "results.json"
+experiment_name = "en-de"
+
+file_path = f"results_{experiment_name}.json"
 
 with open(file_path, 'r') as file:
     results = json.load(file)
@@ -26,7 +30,6 @@ for experiment in results:
     confidences = [[abs(a - b) for a,b in list(zip(x, scores))] for x in confidences]
     print("Confidence intervals: ", confidences)
 
-    import matplotlib.pyplot as plt
     plt.figure(figsize=(10, 6))
 
     # Plot scores vs truths
@@ -34,8 +37,10 @@ for experiment in results:
     plt.scatter(truths, truths, color='g', marker='o', label='Ground Truth Performance')
     plt.xlabel('Ground Truth Performance')
     plt.ylabel('ARES Prediction')
-    plt.title('ARES Prediction vs Ground Truth Performance')
+    plt.title(f'{experiment_name} - {experiment[0]["Label_Column"].replace("_", " ").replace(" Label", "")}')
     plt.ylim(0, 1)
     plt.legend()
     plt.grid(True)
-    plt.show()
+    # plt.show()
+
+    tikzplotlib.save(f"plots/results_{experiment_name}_{experiment[0]['Label_Column']}.tex")

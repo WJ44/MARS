@@ -177,21 +177,36 @@ dataset['Language_Consistency_Label'] = 1
 
 # Create datasets with different positive/negative ratios
 positive_negative_ratios = [0.5, 0.525, 0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7]
-num_positives = len(dataset) // len(positive_negative_ratios)
+ids = dataset["id"].unique()
+ids_copy_1 = ids.copy()
+ids_copy_2 = ids.copy()
+ids_copy_3 = ids.copy()
+num_positives = len(ids) // len(positive_negative_ratios)
 for ratio in positive_negative_ratios:
     negatives_to_add = int((1 - ratio) / ratio * num_positives)
+    
+    positive_ids = ids.sample(n=num_positives, random_state=42)
+    ids = ids.drop(positive_ids.index)
+    negative_ids_1 = ids_copy_1.drop(positive_ids.index).sample(n=negatives_to_add, random_state=42)
+    ids_copy_1 = ids_copy_1.drop(negative_ids_1.index)
+    negative_ids_2 = ids_copy_2.drop(positive_ids.index).drop(negative_ids_1.index).sample(n=negatives_to_add, random_state=42)
+    ids_copy_2 = ids_copy_2.drop(negative_ids_2.index)
+    negative_ids_3 = ids_copy_3.drop(positive_ids.index).drop(negative_ids_1.index).drop(negative_ids_2.index).sample(n=negatives_to_add, random_state=42)
+    ids_copy_3 = ids_copy_3.drop(negative_ids_3.index)
 
-    split = dataset.sample(n=num_positives, random_state=42)
-    dataset.drop(split.index, inplace=True)
-    split_copy_1 = dataset_copy_1.sample(n=negatives_to_add, random_state=42)
-    dataset_copy_1.drop(split_copy_1.index, inplace=True)
-    split_copy_2 = dataset_copy_2.sample(n=negatives_to_add, random_state=42)
-    dataset_copy_2.drop(split_copy_2.index, inplace=True)
-    split_copy_3 = dataset_copy_3.sample(n=negatives_to_add, random_state=42)
-    dataset_copy_3.drop(split_copy_3.index, inplace=True)
+    split = dataset[dataset["id"].isin(positive_ids)]
+    split_copy_1 = dataset_copy_1[dataset_copy_1["id"].isin(negative_ids_1)]
+    split_copy_2 = dataset_copy_2[dataset_copy_2["id"].isin(negative_ids_2)]
+    split_copy_3 = dataset_copy_3[dataset_copy_3["id"].isin(negative_ids_3)]
 
     dataset_combined = pd.concat([split, split_copy_1, split_copy_2, split_copy_3], axis=0, ignore_index=True)
     dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)
 
     file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}.tsv"
     dataset_combined.to_csv(file_path, sep="\t", index=False)
+
+    for lang1, lang2 in [("en", "en"), ("de", "de"), ("de", "en"), ("en", "de")]:
+        file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}_{lang1}_{lang2}.tsv"
+        dataset_filtered = dataset_combined[(dataset_combined["doc_lang"] == lang1) & (dataset_combined["qa_lang"] == lang2)]
+        
+        dataset_filtered.to_csv(file_path, sep="\t", index=False)

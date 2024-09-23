@@ -9,9 +9,9 @@ from datasets import load_dataset
 
 random.seed(42)
 
-SPLIT = "dev"
+SPLIT = "test" # Choose between "dev" and "test"
 
-# Constants for file paths
+# Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
 DE_INDEX_PATH = f"multilingual_data/mlqa_index_de_{SPLIT}.json"
 
@@ -177,10 +177,20 @@ dataset['Language_Consistency_Label'] = 1
 
 # Create datasets with different positive/negative ratios
 positive_negative_ratios = [0.5, 0.525, 0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7]
+num_positives = len(dataset) // len(positive_negative_ratios)
 for ratio in positive_negative_ratios:
-    negatives_to_add = int((1 - ratio) / ratio * len(dataset_copy_1))
+    negatives_to_add = int((1 - ratio) / ratio * num_positives)
 
-    dataset_combined = pd.concat([dataset, dataset_copy_1[:negatives_to_add], dataset_copy_2[:negatives_to_add], dataset_copy_3[:negatives_to_add]], axis=0, ignore_index=True)
+    split = dataset.sample(n=num_positives, random_state=42)
+    dataset.drop(split.index, inplace=True)
+    split_copy_1 = dataset_copy_1.sample(n=negatives_to_add, random_state=42)
+    dataset_copy_1.drop(split_copy_1.index, inplace=True)
+    split_copy_2 = dataset_copy_2.sample(n=negatives_to_add, random_state=42)
+    dataset_copy_2.drop(split_copy_2.index, inplace=True)
+    split_copy_3 = dataset_copy_3.sample(n=negatives_to_add, random_state=42)
+    dataset_copy_3.drop(split_copy_3.index, inplace=True)
+
+    dataset_combined = pd.concat([split, split_copy_1, split_copy_2, split_copy_3], axis=0, ignore_index=True)
     dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)
 
     file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}.tsv"

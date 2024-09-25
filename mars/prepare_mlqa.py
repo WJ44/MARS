@@ -9,7 +9,7 @@ from datasets import load_dataset
 
 random.seed(42)
 
-SPLIT = "test" # Choose between "dev" and "test"
+SPLIT = "dev" # Choose between "dev" and "test"
 
 # Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
@@ -46,8 +46,9 @@ dataset_de_de = load_and_process_dataset("de")
 dataset_merged = pd.merge(dataset_en_en, dataset_de_de, on="id")
 
 # Sample few-shot examples
-few_shot = dataset_merged.sample(n=4, random_state=40)
-dataset_merged = dataset_merged.drop(few_shot.index)
+if SPLIT == "test":
+    few_shot = dataset_merged.sample(n=4, random_state=40)
+    dataset_merged = dataset_merged.drop(few_shot.index)
 
 # Function to create few-shot example files
 def create_few_shot_files(few_shot):

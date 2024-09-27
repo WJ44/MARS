@@ -497,13 +497,14 @@ def generate_negative_synthetic_queries(positive_queries_df: pd.DataFrame, docum
             negative_query = np.random.choice(sampled_queries)
 
         used_queries.add(negative_query)
-        negative_queries.append((index, document, negative_query))
+        negative_queries.append((index, document, negative_query, row["generated_answer"], row["generated_answer_wrong_language"]))
 
-    negative_queries_df = pd.DataFrame(negative_queries, columns=["document_index", "document", "synthetic_query"])
+    negative_queries_df = pd.DataFrame(negative_queries, columns=["document_index", "document", "synthetic_query", "generated_answer", "generated_answer_wrong_language"])
     negative_queries_df['Context_Relevance_Label'] = "No"
+    negative_queries_df['Answer_Faithfulness_Label'] = "No"
 
-    synthetic_queries_filename = settings.get('synthetic_queries_filename', 'intermediate_queries.tsv')
-    negative_queries_df.to_csv(synthetic_queries_filename, mode='a', header=not os.path.exists(synthetic_queries_filename), index=False, sep="\t")
+    # synthetic_queries_filename = settings.get('synthetic_queries_filename', 'intermediate_queries.tsv')
+    # negative_queries_df.to_csv(synthetic_queries_filename, mode='a', header=not os.path.exists(synthetic_queries_filename), index=False, sep="\t")
 
     return negative_queries_df
 
@@ -653,11 +654,6 @@ def label_answers(synthetic_queries: pd.DataFrame) -> pd.DataFrame:
     synthetic_queries["Answer_Relevance_Label"] = [
         check_generated_answer(synthetic_queries.iloc[i]['generated_answer']) for i in range(len(synthetic_queries))
     ]
-
-    # Label each generated answer for relevance
-    synthetic_queries["Language_Consistency_Label"] = [
-        check_generated_answer(synthetic_queries.iloc[i]['generated_answer']) for i in range(len(synthetic_queries))
-    ]
     
     return synthetic_queries
 
@@ -725,7 +721,7 @@ def generate_wrong_language_answers(synthetic_queries: pd.DataFrame, answer_gene
     #     )
     # else: 
     tqdm.pandas(desc="Generating answers... (FLAN)", total=synthetic_queries.shape[0])
-    synthetic_queries["generated_answer"] = synthetic_queries.progress_apply(
+    synthetic_queries["generated_answer_wrong_language"] = synthetic_queries.progress_apply(
         lambda x: generate_wrong_language_answer_llm_approach(
         x["document"], 
         x["synthetic_query"], 
@@ -793,8 +789,8 @@ def shuffle_and_save(synthetic_queries: pd.DataFrame, synthetic_queries_filename
         None
     """
     # Ensure specific conditions for rows where Context_Relevance_Label is "No"
-    condition = synthetic_queries['Context_Relevance_Label'] == "No"
-    synthetic_queries.loc[condition, ['generated_answer', 'Answer_Relevance_Label', 'Answer_Faithfulness_Label', 'Language_Consistency_Label']] = ""
+    # condition = synthetic_queries['Context_Relevance_Label'] == "No"
+    # synthetic_queries.loc[condition, ['generated_answer', 'Answer_Relevance_Label', 'Answer_Faithfulness_Label', 'Language_Consistency_Label']] = ""
     
     # Shuffle the synthetic queries DataFrame with a fixed random state for reproducibility
     synthetic_queries = synthetic_queries.sample(n=len(synthetic_queries), random_state=42)
@@ -921,3 +917,54 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
     print("\n" + "=" * box_width)
     print(f"| {message} |")
     print("=" * box_width + "\n")
+
+def generate_synthetic_data(documents: pd.DataFrame, synthetic_queries_filename: str, settings: dict) -> pd.DataFrame:
+    total_documents = len(documents)
+
+    synthetic_queries = generate_positive_synthetic_queries(documents, settings, total_documents)
+    synthetic_queries = synthetic_queries.sample(n=total_documents, random_state=41, ignore_index=True)
+    synthetic_queries["Context_Relevance_Label"] = "Yes"
+
+    synthetic_queries = generate_answers(synthetic_queries, settings)
+    synthetic_queries = label_answers(synthetic_queries)
+    synthetic_queries["Language_Consistency_Label"] = "Yes"
+
+    if settings['query_language'] != settings['document_language'] or settings['second_language']:
+        synthetic_queries = generate_wrong_language_answers(synthetic_queries, settings)
+
+    synthetic_queries_copy_1 = synthetic_queries.copy()
+    sampled_documents = documents["document"].sample(n=len(synthetic_queries_copy_1), random_state=42, ignore_index=True)
+    synthetic_queries_copy_1["document"] = sampled_documents
+    synthetic_queries_copy_1["Context_Relevance_Label"] = "No"
+    # Set "Answer_Faithfulness_Label" to "No" for a random half of the rows
+    synthetic_queries_copy_1["Answer_Faithfulness_Label"] = ""
+    synthetic_queries_copy_1["Answer_Relevance_Label"] = ""
+    half_indices = synthetic_queries_copy_1.sample(frac=0.5, random_state=42).index
+    synthetic_queries_copy_1.loc[half_indices, "Answer_Faithfulness_Label"] = "No"
+    # If a document is the same as the original document, set context relevance to ""
+    same_document_mask = synthetic_queries_copy_1["document"] == synthetic_queries["document"]
+    synthetic_queries_copy_1.loc[same_document_mask, "Context_Relevance_Label"] = ""
+    synthetic_queries_copy_1.loc[same_document_mask, "Answer_Faithfulness_Label"] = ""
+
+    synthetic_queries_copy_2 = synthetic_queries.copy()
+    sampled_answers = synthetic_queries[["generated_answer", "generated_answer_wrong_language"]].sample(n=len(synthetic_queries_copy_2), random_state=42, ignore_index=True)
+    synthetic_queries_copy_2['generated_answer'] = sampled_answers["generated_answer"]
+    synthetic_queries_copy_2['generated_answer_wrong_language'] = sampled_answers["generated_answer_wrong_language"]
+    synthetic_queries_copy_2["Answer_Faithfulness_Label"] = ""
+    half_indices = synthetic_queries_copy_2.sample(frac=0.5, random_state=43).index
+    synthetic_queries_copy_2.loc[half_indices, "Answer_Faithfulness_Label"] = "No"
+    synthetic_queries_copy_2['Answer_Relevance_Label'] = "No"
+    # If the shuffled answer is the same as the original answer, set both labels to ""
+    same_answer_mask = synthetic_queries_copy_2['generated_answer'] == synthetic_queries['generated_answer']
+    synthetic_queries_copy_2.loc[same_answer_mask, 'Answer_Faithfulness_Label'] = ""
+    synthetic_queries_copy_2.loc[same_answer_mask, 'Answer_Relevance_Label'] = ""
+    synthetic_queries_copy_2['Context_Relevance_Label'] = ""
+
+    synthetic_queries = pd.concat([synthetic_queries, synthetic_queries_copy_1, synthetic_queries_copy_2], ignore_index=True)
+    synthetic_queries_copy_3 = synthetic_queries.copy()
+    synthetic_queries_copy_3["generated_answer"] = synthetic_queries_copy_3["generated_answer_wrong_language"]
+    synthetic_queries_copy_3["Language_Consistency_Label"] = "No"
+
+    synthetic_queries = pd.concat([synthetic_queries, synthetic_queries_copy_3], ignore_index=True)
+
+    shuffle_and_save(synthetic_queries, synthetic_queries_filename)

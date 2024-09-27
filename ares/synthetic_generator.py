@@ -6,7 +6,8 @@ from .LLM_as_a_Judge_Adaptation.Generate_Synthetic_Queries_and_Answers import (
     generate_few_shot_prompts,
     generate_wrong_language_few_shot_prompts,
     generate_synthetic_queries,
-    Generate_Synthetic_Answers
+    Generate_Synthetic_Answers,
+    generate_synthetic_data
 )
 
 def synthetic_generator_config(
@@ -112,41 +113,75 @@ def synthetic_generator_config(
             few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language, second_language
         )
 
-        synthetic_queries_config = {
+        # synthetic_queries_config = {
+        #     'few_shot_examples': few_shot_examples,
+        #     'length_of_fewshot_prompt': length_of_fewshot_prompt,
+        #     'device': device,
+        #     'tokenizer': tokenizer,
+        #     'model': model,
+        #     'api_model': api_model,
+        #     'model_choice': model_choice,
+        #     'percentiles': percentiles,
+        #     'for_fever_dataset': for_fever_dataset,
+        #     'for_wow_dataset': for_wow_dataset,
+        #     'synthetic_query_prompt': synthetic_query_prompt,
+        #     'synthetic_queries_filename': synthetic_queries_filename,
+        #     'question_temperatures': question_temperatures,
+        #     'number_of_negatives_added_ratio': number_of_negatives_added_ratio,
+        #     'lower_bound_for_negatives': lower_bound_for_negatives,
+        #     'document_language': document_language,
+        #     'query_language': query_language,
+        # }
+
+        # generate_synthetic_queries(documents, synthetic_queries_config)
+
+        # synthetic_answers_config = {
+        #     'regenerate_answers': regenerate_answers,
+        #     'answer_gen_few_shot_examples': answer_gen_few_shot_examples,
+        #     'length_of_fewshot_prompt_answer_gen': length_of_fewshot_prompt_answer_gen,
+        #     'device': device,
+        #     'tokenizer': tokenizer,
+        #     'api_model': api_model,
+        #     'synthetic_valid_answer_prompt': synthetic_valid_answer_prompt,
+        #     'synthetic_contradictory_answer_prompt': synthetic_contradictory_answer_prompt,
+        #     'model': model,
+        #     'for_fever_dataset': for_fever_dataset,
+        #     'for_wow_dataset': for_wow_dataset,
+        #     'few_shot_examples_for_contradictory_answers': few_shot_examples_for_contradictory_answers,
+        #     'number_of_negatives_added_ratio': number_of_negatives_added_ratio,
+        #     'lower_bound_for_negatives': lower_bound_for_negatives,
+        #     'number_of_contradictory_answers_added_ratio': number_of_contradictory_answers_added_ratio,
+        #     'number_of_positives_added_ratio': number_of_positives_added_ratio,
+        #     'regenerate_embeddings': regenerate_embeddings,
+        #     'document_language': document_language,
+        #     'query_language': query_language,
+        #     'second_language': second_language,
+        #     'wrong_language_answer_gen_few_shot_examples': wrong_language_answer_gen_few_shot_examples,
+        #     'length_of_fewshot_prompt_wrong_language_answer_gen': length_of_fewshot_prompt_wrong_language_answer_gen,
+        # }
+
+        # Generate_Synthetic_Answers(synthetic_queries_filename, synthetic_answers_config)
+
+        settings = {
             'few_shot_examples': few_shot_examples,
             'length_of_fewshot_prompt': length_of_fewshot_prompt,
-            'device': device,
-            'tokenizer': tokenizer,
-            'model': model,
-            'api_model': api_model,
-            'model_choice': model_choice,
-            'percentiles': percentiles,
-            'for_fever_dataset': for_fever_dataset,
-            'for_wow_dataset': for_wow_dataset,
-            'synthetic_query_prompt': synthetic_query_prompt,
-            'synthetic_queries_filename': synthetic_queries_filename,
-            'question_temperatures': question_temperatures,
-            'number_of_negatives_added_ratio': number_of_negatives_added_ratio,
-            'lower_bound_for_negatives': lower_bound_for_negatives,
-            'document_language': document_language,
-            'query_language': query_language,
-        }
-
-        generate_synthetic_queries(documents, synthetic_queries_config)
-
-        synthetic_answers_config = {
             'regenerate_answers': regenerate_answers,
             'answer_gen_few_shot_examples': answer_gen_few_shot_examples,
             'length_of_fewshot_prompt_answer_gen': length_of_fewshot_prompt_answer_gen,
             'device': device,
             'tokenizer': tokenizer,
-            'api_model': api_model,
+            'model': model,
             'synthetic_valid_answer_prompt': synthetic_valid_answer_prompt,
             'synthetic_contradictory_answer_prompt': synthetic_contradictory_answer_prompt,
-            'model': model,
+            'api_model': api_model,
+            'model_choice': model_choice,
+            'percentiles': percentiles,
             'for_fever_dataset': for_fever_dataset,
-            'for_wow_dataset': for_wow_dataset,
             'few_shot_examples_for_contradictory_answers': few_shot_examples_for_contradictory_answers,
+            'for_wow_dataset': for_wow_dataset,
+            'synthetic_query_prompt': synthetic_query_prompt,
+            'synthetic_queries_filename': synthetic_queries_filename,
+            'question_temperatures': question_temperatures,
             'number_of_negatives_added_ratio': number_of_negatives_added_ratio,
             'lower_bound_for_negatives': lower_bound_for_negatives,
             'number_of_contradictory_answers_added_ratio': number_of_contradictory_answers_added_ratio,
@@ -157,7 +192,6 @@ def synthetic_generator_config(
             'second_language': second_language,
             'wrong_language_answer_gen_few_shot_examples': wrong_language_answer_gen_few_shot_examples,
             'length_of_fewshot_prompt_wrong_language_answer_gen': length_of_fewshot_prompt_wrong_language_answer_gen,
-
         }
 
-        Generate_Synthetic_Answers(synthetic_queries_filename, synthetic_answers_config)
+        generate_synthetic_data(documents, synthetic_queries_filename, settings)

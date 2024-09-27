@@ -631,7 +631,7 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
     Returns:
         str: The generated answer text.
     """
-    if query_language != second_language:
+    if query_language != document_language:
         answer_language = document_language
     elif second_language:
         answer_language = second_language

@@ -4,7 +4,7 @@ synth_config = {
     "document_filepaths": ["multilingual_data/mlqa_test_en_en.tsv"],
     "few_shot_prompt_filename": "multilingual_data/mlqa_test_few_shot_en_en.tsv",
     "synthetic_queries_filenames": ["multilingual_data/synthetic_queries_mlqa_test_en-en.tsv"],
-    "documents_sampled": 1500, # 4513
+    "documents_sampled": 2000, # 4513
     "model_choice": "CohereForAI/aya-23-35B",
     "document_language": "English",
     "query_language": "English",
@@ -19,7 +19,7 @@ synth_config = {
     "document_filepaths": ["multilingual_data/mlqa_test_en_de.tsv"],
     "few_shot_prompt_filename": "multilingual_data/mlqa_test_few_shot_en_de.tsv",
     "synthetic_queries_filenames": ["multilingual_data/synthetic_queries_mlqa_test_en-de.tsv"],
-    "documents_sampled": 1500,
+    "documents_sampled": 2000,
     "model_choice": "CohereForAI/aya-23-35B",
     "document_language": "English",
     "query_language": "German"
@@ -32,7 +32,7 @@ print(results)
 synth_config = {
     "document_filepaths": ["multilingual_data/mlqa_test_de_en.tsv"],
     "few_shot_prompt_filename": "multilingual_data/mlqa_test_few_shot_de_en.tsv",
-    "documents_sampled": 1500,
+    "documents_sampled": 2000,
     "synthetic_queries_filenames": ["multilingual_data/synthetic_queries_mlqa_test_de-en.tsv"],
     "model_choice": "CohereForAI/aya-23-35B",
     "document_language": "German",
@@ -46,7 +46,7 @@ print(results)
 synth_config = {
     "document_filepaths": ["multilingual_data/mlqa_test_de_de.tsv"],
     "few_shot_prompt_filename": "multilingual_data/mlqa_test_few_shot_de_de.tsv",
-    "documents_sampled": 1500,
+    "documents_sampled": 2000,
     "synthetic_queries_filenames": ["multilingual_data/synthetic_queries_mlqa_test_de-de.tsv"],
     "model_choice": "CohereForAI/aya-23-35B",
     "document_language": "German",

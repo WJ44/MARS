@@ -56,7 +56,7 @@ class ARES:
             "synthetic_contradictory_answer_prompt": (str, "Create an answer for the given question that contradicts the provided document. You should create false information that disagrees with what exists within the content of the document.  Return only the false answer, without any labels or additional text.\n\n"),
             "document_language": (str, "English"),
             "query_language": (str, "English"),
-            "second_language": (str, None),
+            "second_language": (str, ""),
         },
         
         "classifier_model": {

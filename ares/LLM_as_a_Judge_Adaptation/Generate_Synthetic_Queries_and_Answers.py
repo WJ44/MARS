@@ -328,7 +328,7 @@ def generate_wrong_language_few_shot_prompts(few_shot_prompt_filename: str, for_
     # Initialize the few-shot examples string
     answer_gen_few_shot_examples = ""
 
-    if query_language != second_language:
+    if query_language != document_language:
         answer_language = document_language
     elif second_language:
         answer_language = second_language
@@ -411,7 +411,7 @@ def generate_positive_synthetic_queries(documents: pd.DataFrame, settings: dict,
     target_queries = num_documents
 
     all_queries = []
-    initial_queries_per_document = 2
+    initial_queries_per_document = 1
     synthetic_queries_filename = settings.get('synthetic_queries_filename', 'intermediate_queries.tsv')
 
     for start in range(0, num_documents, chunk_size):

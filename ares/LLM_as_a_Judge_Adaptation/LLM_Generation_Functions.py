@@ -609,7 +609,7 @@ tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset: bool =
     return query
 
 def generate_wrong_language_answer_llm_approach(document: str, question: str, prompt: str, length_of_fewshot_prompt: int, 
-device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_language=None) -> str:
+device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_language=None, second_language=None) -> str:
     """
     Generates an answer using a language model based on the provided document and question.
 
@@ -631,14 +631,19 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
     Returns:
         str: The generated answer text.
     """
+    if query_language != second_language:
+        answer_language = document_language
+    elif second_language:
+        answer_language = second_language
+
     # Construct the prompt without the document based on the dataset type
     prompt_without_document = prompt + "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
     if for_fever_dataset:
-        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): \nAnswer ({document_language}): "
+        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): \nAnswer ({answer_language}): "
     elif for_wow_dataset:
-        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): \nResponse ({document_language}): "
+        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): \nResponse ({answer_language}): "
     else:
-        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): \nAnswer ({document_language}): "
+        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): \nAnswer ({answer_language}): "
 
     # Calculate the token lengths for the prompt, document, and question
     prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors='pt').to(device).shape[1]
@@ -657,13 +662,13 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
     prompt += f"Document ({document_language}): " + document + "\n"
     if for_fever_dataset:
         prompt += f"Statement ({query_language}): " + question + "\n"
-        prompt += f"Answer ({document_language}): "
+        prompt += f"Answer ({answer_language}): "
     elif for_wow_dataset:
         prompt += f"Dialogue ({query_language}): " + question + "\n"
-        prompt += f"Response ({document_language}): "
+        prompt += f"Response ({answer_language}): "
     else:
         prompt += f"Question ({query_language}): " + question + "\n"
-        prompt += f"Answer ({document_language}): "
+        prompt += f"Answer ({answer_language}): "
 
     # Encode the complete prompt
     if model.config.model_type == "cohere":

@@ -296,7 +296,7 @@ def generate_few_shot_prompts(few_shot_prompt_filename: str, for_fever_dataset: 
     
     return answer_gen_few_shot_examples, length_of_fewshot_prompt_answer_gen
 
-def generate_wrong_language_few_shot_prompts(few_shot_prompt_filename: str, for_fever_dataset: bool, for_wow_dataset: bool, document_language: str, query_language: str) -> tuple[str, int]:
+def generate_wrong_language_few_shot_prompts(few_shot_prompt_filename: str, for_fever_dataset: bool, for_wow_dataset: bool, document_language: str, query_language: str, second_language: str) -> tuple[str, int]:
     """
     Generates few-shot prompts for answer generation based on the provided dataset.
 
@@ -327,6 +327,11 @@ def generate_wrong_language_few_shot_prompts(few_shot_prompt_filename: str, for_
     
     # Initialize the few-shot examples string
     answer_gen_few_shot_examples = ""
+
+    if query_language != second_language:
+        answer_language = document_language
+    elif second_language:
+        answer_language = second_language
     
     # Construct the few-shot examples
     for row in range(len(answer_gen_few_shot_prompt)):
@@ -335,13 +340,13 @@ def generate_wrong_language_few_shot_prompts(few_shot_prompt_filename: str, for_
         
         if for_fever_dataset:
             answer_gen_few_shot_examples += f"Statement ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
-            answer_gen_few_shot_examples += f"Answer ({document_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
+            answer_gen_few_shot_examples += f"Answer ({answer_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
         elif for_wow_dataset:
             answer_gen_few_shot_examples += f"Dialogue ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
-            answer_gen_few_shot_examples += f"Response ({document_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
+            answer_gen_few_shot_examples += f"Response ({answer_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
         else:
             answer_gen_few_shot_examples += f"Question ({query_language}): {answer_gen_few_shot_prompt.iloc[row]['Query']}\n"
-            answer_gen_few_shot_examples += f"Answer ({document_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
+            answer_gen_few_shot_examples += f"Answer ({answer_language}): {answer_gen_few_shot_prompt.iloc[row]['Answer']}\n\n"
     
     return answer_gen_few_shot_examples, length_of_fewshot_prompt_answer_gen
 
@@ -732,7 +737,8 @@ def generate_wrong_language_answers(synthetic_queries: pd.DataFrame, answer_gene
         answer_generation_settings['for_fever_dataset'], 
         answer_generation_settings['for_wow_dataset'],
         answer_generation_settings['document_language'],
-        answer_generation_settings['query_language']
+        answer_generation_settings['query_language'],
+        answer_generation_settings['second_language']
     ), 
     axis=1
     )
@@ -839,7 +845,7 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
         total_queries = len(synth_queries)
         if total_queries % 2 != 0:
             total_queries += 1
-        if answer_generation_settings['query_language'] != answer_generation_settings['document_language']:
+        if answer_generation_settings['query_language'] != answer_generation_settings['document_language'] or answer_generation_settings['second_language']:
             num_documents = total_queries // 4  
         else:
             num_documents = total_queries // 3 # Since we have duplicated the first half
@@ -882,7 +888,7 @@ def Generate_Synthetic_Answers(synthetic_queries_filename: str, answer_generatio
         synth_queries.loc[second_half_queries.index, 'Answer_Faithfulness_Label'] = second_half_queries['Answer_Faithfulness_Label']
         synth_queries.loc[second_half_queries.index, 'Answer_Relevance_Label'] = second_half_queries['Answer_Relevance_Label']
 
-        if answer_generation_settings['query_language'] != answer_generation_settings['document_language']:
+        if answer_generation_settings['query_language'] != answer_generation_settings['document_language'] or answer_generation_settings['second_language']:
             third_half_queries = synth_queries.iloc[2 * half_num_documents:3 * half_num_documents].copy()
             third_half_queries = generate_wrong_language_answers(third_half_queries, answer_generation_settings)
             third_half_queries = label_answers(third_half_queries)

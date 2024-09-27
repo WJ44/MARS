@@ -7,7 +7,8 @@ synth_config = {
     "documents_sampled": 4513, # 4513
     "model_choice": "CohereForAI/aya-23-35B",
     "document_language": "English",
-    "query_language": "English"
+    "query_language": "English",
+    "second_language": "German"
 }
 
 ares = ARES(synthetic_query_generator=synth_config)
@@ -49,7 +50,8 @@ synth_config = {
     "synthetic_queries_filenames": ["multilingual_data/synthetic_queries_mlqa_test_de-de.tsv"],
     "model_choice": "CohereForAI/aya-23-35B",
     "document_language": "German",
-    "query_language": "German"
+    "query_language": "German",
+    "second_language": "English"
 }
 
 ares = ARES(synthetic_query_generator=synth_config)

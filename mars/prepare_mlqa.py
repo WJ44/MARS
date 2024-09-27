@@ -9,7 +9,7 @@ from datasets import load_dataset
 
 random.seed(42)
 
-SPLIT = "dev" # Choose between "dev" and "test"
+SPLIT = "test" # Choose between "dev" and "test"
 
 # Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
@@ -65,13 +65,21 @@ def create_few_shot_files(few_shot):
         f"mlqa_{SPLIT}_few_shot_de_en.tsv": few_shot[["Document_de", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
     }
 
+    few_shot_en_en_wrong = few_shot_files[f"mlqa_{SPLIT}_few_shot_en_en.tsv"].copy()
+    few_shot_de_de_wrong = few_shot_files[f"mlqa_{SPLIT}_few_shot_de_de.tsv"].copy()
     few_shot_en_de_wrong = few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"].copy()
     few_shot_de_en_wrong = few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"].copy()
-    few_shot_en_de_wrong["Answer_de"] = few_shot_de_en_wrong["Answer_en"]
-    few_shot_de_en_wrong["Answer_en"] = few_shot_en_de_wrong["Answer_de"]
+    few_shot_en_en_wrong["Answer_en"] = few_shot_files[f"mlqa_{SPLIT}_few_shot_de_de.tsv"]["Answer_de"]
+    few_shot_de_de_wrong["Answer_de"] = few_shot_files[f"mlqa_{SPLIT}_few_shot_en_en.tsv"]["Answer_en"]
+    few_shot_en_de_wrong["Answer_de"] = few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"]["Answer_en"]
+    few_shot_de_en_wrong["Answer_en"] = few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"]["Answer_de"]
+    few_shot_en_en_wrong["Language_Consistency_Label"] = "[[No]]"
+    few_shot_de_de_wrong["Language_Consistency_Label"] = "[[No]]"
     few_shot_en_de_wrong["Language_Consistency_Label"] = "[[No]]"
     few_shot_de_en_wrong["Language_Consistency_Label"] = "[[No]]"
 
+    few_shot_files[f"mlqa_{SPLIT}_few_shot_en_en.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_en_en.tsv"], few_shot_en_en_wrong], axis=0, ignore_index=True)
+    few_shot_files[f"mlqa_{SPLIT}_few_shot_de_de.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_de_de.tsv"], few_shot_de_de_wrong], axis=0, ignore_index=True)
     few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"], few_shot_en_de_wrong], axis=0, ignore_index=True)
     few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"], few_shot_de_en_wrong], axis=0, ignore_index=True)
 

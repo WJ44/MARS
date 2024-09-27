@@ -40,7 +40,8 @@ def synthetic_generator_config(
         "You should create false information that disagrees with what exists within the content of the document.\n\n"
     ),
     document_language: str = "English",
-    query_language: str = "English"
+    query_language: str = "English",
+    second_language: str = None
 ) -> None:
     """
     Configures and generates synthetic queries and answers based on the provided parameters.
@@ -108,7 +109,7 @@ def synthetic_generator_config(
         )
 
         wrong_language_answer_gen_few_shot_examples, length_of_fewshot_prompt_wrong_language_answer_gen = generate_wrong_language_few_shot_prompts(
-            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
+            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language, second_language
         )
 
         synthetic_queries_config = {
@@ -153,6 +154,7 @@ def synthetic_generator_config(
             'regenerate_embeddings': regenerate_embeddings,
             'document_language': document_language,
             'query_language': query_language,
+            'second_language': second_language,
             'wrong_language_answer_gen_few_shot_examples': wrong_language_answer_gen_few_shot_examples,
             'length_of_fewshot_prompt_wrong_language_answer_gen': length_of_fewshot_prompt_wrong_language_answer_gen,
 

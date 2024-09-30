@@ -401,6 +401,8 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
         synth_queries['generated_answer'] = synth_queries['Answer']
         synth_queries['document'] = synth_queries['Document']
 
+    print("Preparing train set for " + label_column)
+
     # Print initial count
     print(f"Initial count: {len(synth_queries)}")
 
@@ -505,12 +507,21 @@ def transform_data(synth_queries: pd.DataFrame, validation_set: str, label_colum
     # Initialize the training DataFrame
     train_df = synth_queries
 
+    print("Preparing test set for " + label_column)
+
+
     # Read and preprocess the validation set
     test_set = pd.read_csv(validation_set, sep="\t")
+
+    # Print initial count
+    print(f"Initial count: {len(test_set)}")
+
     test_set['Question'] = test_set['Query']
     test_set['Document'] = test_set['Document'].str.strip()
     test_set = test_set[test_set["Document"].str.len() > 100]
     test_set = test_set[test_set[label_column].notna()]
+
+    print(f"Count after initial filtering: {len(test_set)}")
 
     # Preprocess the training DataFrame
     train_df['document'] = train_df['document'].astype(str).str.strip()
@@ -518,7 +529,7 @@ def transform_data(synth_queries: pd.DataFrame, validation_set: str, label_colum
     train_df = train_df[train_df[label_column].notna()]
 
     # Print counts of Answer_Relevance_Label before any further filtering
-    print(f"{label_column}} counts before filtering: Yes - {test_set[test_set[label_column] == 1.0].shape[0]}, No - {test_set[test_set[label_column] == 0.0].shape[0]}")
+    print(f"{label_column} counts before filtering: Yes - {test_set[test_set[label_column] == 1.0].shape[0]}, No - {test_set[test_set[label_column] == 0.0].shape[0]}")
 
     # Combine query and document (and generated answer if applicable) into a single text field
     if "Context" in label_column:

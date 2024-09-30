@@ -129,6 +129,8 @@ answer_faithfulness_labels = []
 answer_relevance_labels = []
 incorrect_language = []
 language_consistency_labels = []
+unfaithful_answers = []
+unfaithful_passages = []
 
 # Generate negative examples
 for row in tqdm(range(len(dataset))):
@@ -137,6 +139,7 @@ for row in tqdm(range(len(dataset))):
     doc_lang = dataset.iloc[row]["doc_lang"]
     article = indexes[doc_lang][id]
     answer = dataset_merged[dataset_merged["id"] == id].iloc[0][f"Answer_{doc_lang}"]
+    document = dataset_merged[dataset_merged["id"] == id].iloc[0][f"Document_{doc_lang}"]
 
     # Get all passages from other articles
     wiki = [item for item in incorrect_passages_dict[doc_lang][incorrect_passages_dict[doc_lang][f"article_{doc_lang}"] != article][f"Document_{doc_lang}"] if len(item.strip().split(" ")) >= 50] #TODO does not work for Japanese
@@ -146,16 +149,29 @@ for row in tqdm(range(len(dataset))):
 
     # For half the negative Context Relevance examples, use a passage from the same article that does not contain the answer, for the other half use a random passage
     if row % 2 == 0 and filtered_list:
-        incorrect_passages.append(random.choice(filtered_list))
+        incorrect_passage = random.choice(filtered_list)
+        incorrect_passages.append(incorrect_passage)
         context_relevance_labels.append(0)
     else:
-        incorrect_passages.append(random.choice(wiki))
+        incorrect_passage = random.choice(wiki)
+        incorrect_passages.append(incorrect_passage)
         context_relevance_labels.append(0)
+    if row % 4 == 0 or row % 4 == 1:
+        unfaithful_passages.append(incorrect_passage)
+        answer_faithfulness_labels.append(0)
+    else:
+        unfaithful_passages.append(document)
 
     # Sample incorrect answer
-    incorrect_answers.append(random.choice([ans for ans in incorrect_answers_dict[doc_lang] if ans != answer]))
-    answer_faithfulness_labels.append(0)
+    incorrect_answer = random.choice([ans for ans in incorrect_answers_dict[doc_lang] if ans != answer])
+    incorrect_answers.append(incorrect_answer)
     answer_relevance_labels.append(0)
+
+    if row % 4 == 2 or row % 4 == 3:
+        unfaithful_answers.append(incorrect_answer)
+        answer_faithfulness_labels.append(0)
+    else:
+        unfaithful_answers.append(answer)
 
     # Sample incorrect language answer
     incorrect_language.append(dataset_merged.loc[dataset_merged["id"] == id].iloc[0][f"Answer_{'de' if qa_lang == 'en' else 'en'}"])
@@ -164,19 +180,24 @@ for row in tqdm(range(len(dataset))):
 dataset_copy_1 = dataset.copy()
 dataset_copy_2 = dataset.copy()
 dataset_copy_3 = dataset.copy()
+dataset_copy_4 = dataset.copy()
 
 dataset_copy_1["Document"] = incorrect_passages
 dataset_copy_1["Context_Relevance_Label"] = context_relevance_labels
 dataset_copy_1 = dataset_copy_1.sample(n=len(dataset_copy_1), random_state=42)
 
 dataset_copy_2["Answer"] = incorrect_answers
-dataset_copy_2["Answer_Faithfulness_Label"] = answer_faithfulness_labels
 dataset_copy_2["Answer_Relevance_Label"] = answer_relevance_labels
 dataset_copy_2 = dataset_copy_2.sample(n=len(dataset_copy_2), random_state=42)
 
 dataset_copy_3["Answer"] = incorrect_language
 dataset_copy_3["Language_Consistency_Label"] = language_consistency_labels
 dataset_copy_3 = dataset_copy_3.sample(n=len(dataset_copy_3), random_state=42)
+
+dataset_copy_4["Answer"] = unfaithful_answers
+dataset_copy_4["Document"] = unfaithful_passages
+dataset_copy_4["Answer_Faithfulness_Label"] = answer_faithfulness_labels
+dataset_copy_4 = dataset_copy_4.sample(n=len(dataset_copy_4), random_state=42)
 
 # Add labels for positive examples
 dataset['Context_Relevance_Label'] = 1
@@ -190,6 +211,7 @@ ids = pd.DataFrame(dataset["id"].unique())
 ids_copy_1 = ids.copy()
 ids_copy_2 = ids.copy()
 ids_copy_3 = ids.copy()
+ids_copy_4 = ids.copy()
 num_positives = len(ids) // len(positive_negative_ratios)
 for ratio in positive_negative_ratios:
     negatives_to_add = int((1 - ratio) / ratio * num_positives)
@@ -202,13 +224,17 @@ for ratio in positive_negative_ratios:
     ids_copy_2 = ids_copy_2.drop(negative_ids_2.index)
     negative_ids_3 = ids_copy_3.sample(n=negatives_to_add, random_state=42)
     ids_copy_3 = ids_copy_3.drop(negative_ids_3.index)
+    negative_ids_4 = ids_copy_4.sample(n=negatives_to_add, random_state=42)
+    ids_copy_4 = ids_copy_4.drop(negative_ids_4.index)
+
 
     split = dataset[dataset["id"].isin(positive_ids[0])]
     split_copy_1 = dataset_copy_1[dataset_copy_1["id"].isin(negative_ids_1[0])]
     split_copy_2 = dataset_copy_2[dataset_copy_2["id"].isin(negative_ids_2[0])]
     split_copy_3 = dataset_copy_3[dataset_copy_3["id"].isin(negative_ids_3[0])]
+    split_copy_4 = dataset_copy_4[dataset_copy_4["id"].isin(negative_ids_4[0])]
 
-    dataset_combined = pd.concat([split, split_copy_1, split_copy_2, split_copy_3], axis=0, ignore_index=True)
+    dataset_combined = pd.concat([split, split_copy_1, split_copy_2, split_copy_3, split_copy_4], axis=0, ignore_index=True)
     dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)
 
     file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}.tsv"

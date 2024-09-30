@@ -475,12 +475,17 @@ def preprocess_data(test_set_selection: str, label_column: str, labels: list):
     # Combine query and document (and answer if applicable) into the text column
     if "Context" in label_column:
         test_set[text_column] = [
-            combine_query_document(test_set.iloc[i]['Query'], test_set.iloc[i]['Document']) 
+            combine_query_document(query=test_set.iloc[i]['Query'], document=test_set.iloc[i]['Document']) 
+            for i in range(len(test_set))
+        ]
+    elif "Answer_Relevance" in label_column:
+        test_set[text_column] = [
+            combine_query_document(query=test_set.iloc[i]['Query'], answer=test_set.iloc[i]['Answer']) 
             for i in range(len(test_set))
         ]
     else:
         test_set[text_column] = [
-            combine_query_document(test_set.iloc[i]['Query'], test_set.iloc[i]['Document'], test_set.iloc[i]['Answer']) 
+            combine_query_document(query=test_set.iloc[i]['Query'], document=test_set.iloc[i]['Document'], answer=test_set.iloc[i]['Answer']) 
             for i in range(len(test_set))
         ]
 
@@ -1063,9 +1068,11 @@ def post_process_predictions(params: dict):
 
     text_column = 'concat_text'
     if "Context" in label_column:
-        Y_labeled_dataset[text_column] = [combine_query_document(Y_labeled_dataset.iloc[i]['Query'], Y_labeled_dataset.iloc[i]['Document']) for i in range(len(Y_labeled_dataset))]
+        Y_labeled_dataset[text_column] = [combine_query_document(query=Y_labeled_dataset.iloc[i]['Query'], document=Y_labeled_dataset.iloc[i]['Document']) for i in range(len(Y_labeled_dataset))]
+    elif "Answer_Relevance" in label_column:
+        Y_labeled_dataset[text_column] = [combine_query_document(query=Y_labeled_dataset.iloc[i]['Query'], answer=Y_labeled_dataset.iloc[i]['Answer']) for i in range(len(Y_labeled_dataset))]
     else:
-        Y_labeled_dataset[text_column] = [combine_query_document(Y_labeled_dataset.iloc[i]['Query'], Y_labeled_dataset.iloc[i]['Document'], Y_labeled_dataset.iloc[i]['Answer']) for i in range(len(Y_labeled_dataset))]
+        Y_labeled_dataset[text_column] = [combine_query_document(query=Y_labeled_dataset.iloc[i]['Query'], document=Y_labeled_dataset.iloc[i]['Document'], answer=Y_labeled_dataset.iloc[i]['Answer']) for i in range(len(Y_labeled_dataset))]
 
     Y_labeled_dataset = Y_labeled_dataset[Y_labeled_dataset[text_column] != "Error"]
 

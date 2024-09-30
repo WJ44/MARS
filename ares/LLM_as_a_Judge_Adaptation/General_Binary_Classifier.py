@@ -454,7 +454,7 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
         print(f"Count after filtering for answer relevance: {len(synth_queries)}")
     else:
         synth_queries["concat_text"] = [
-            combine_query_document(synth_queries.iloc[i]['synthetic_query'], synth_queries.iloc[i]['document'], synth_queries.iloc[i]['generated_answer'])
+            combine_query_document(query=synth_queries.iloc[i]['synthetic_query'], document=synth_queries.iloc[i]['document'], answer=synth_queries.iloc[i]['generated_answer'])
             for i in range(len(synth_queries))
         ]
 
@@ -562,7 +562,7 @@ def transform_data(synth_queries: pd.DataFrame, validation_set: str, label_colum
         print(f"Count after filtering for answer relevance: {len(test_set)}")
     else:
         test_set['concat_text'] = [
-            combine_query_document(test_set.iloc[i]['Question'], test_set.iloc[i]['Document'], test_set.iloc[i]['Answer'])
+            combine_query_document(query=test_set.iloc[i]['Question'], document=test_set.iloc[i]['Document'], answer=test_set.iloc[i]['Answer'])
             for i in range(len(test_set))
         ]
 

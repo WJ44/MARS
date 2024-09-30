@@ -6,6 +6,8 @@ from tqdm import tqdm
 
 # Requires the XOR-AttribQA dataset from: https://storage.googleapis.com/gresearch/xor_attriqa/xor_attriqa.zip (https://github.com/google-research/google-research/tree/master/xor_attriqa)
 
+# TODO might be a way to get correct answers even if not ais
+
 random.seed(42)
 
 SPLIT = "dev" # Choose between "dev" and "test"
@@ -178,7 +180,7 @@ if SPLIT == "test":
     ids_copy_2 = ids.copy()
     ids_copy_3 = ids.copy()
     ids_copy_4 = ids.copy()
-    num_positives = len(ids) // len(positive_negative_ratios)
+    num_positives = len(ids) // len(positive_negative_ratios) ## TODO still do not really have enough samples for this even in test I think, better to only do for negatives, although they are also limited since only negatives wher faithfulness is positive are used
     for ratio in positive_negative_ratios:
         negatives_to_add = int((1 - ratio) / ratio * num_positives)
         

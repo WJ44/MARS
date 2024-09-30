@@ -157,9 +157,9 @@ def combine_query_document(query: str, document: str, answer=None):
     cleaned_document = re.sub(r'\n+', '\n', document.replace("\r", " ").replace("\t", " ")).strip()
     cleaned_document = cleaned_document.replace("=", " ").replace("-", " ")
     cleaned_document = re.sub(r'\s+', ' ', cleaned_document).strip()
-    cleaned_document = " ".join(cleaned_document.split(" ")[:512])
+    cleaned_document = " ".join(cleaned_document.split(" ")[:512]) #TODO does not work for Japanese
 
-    if len(query.split(" ")) > 100:
+    if len(query.split(" ")) > 100: #TODO does not work for Japanese
         query = " ".join(query.split(" ")[:30])
 
     if answer is None:

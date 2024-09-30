@@ -139,10 +139,10 @@ for row in tqdm(range(len(dataset))):
     answer = dataset_merged[dataset_merged["id"] == id].iloc[0][f"Answer_{doc_lang}"]
 
     # Get all passages from other articles
-    wiki = [item for item in incorrect_passages_dict[doc_lang][incorrect_passages_dict[doc_lang][f"article_{doc_lang}"] != article][f"Document_{doc_lang}"] if len(item.strip().split(" ")) >= 50]
+    wiki = [item for item in incorrect_passages_dict[doc_lang][incorrect_passages_dict[doc_lang][f"article_{doc_lang}"] != article][f"Document_{doc_lang}"] if len(item.strip().split(" ")) >= 50] #TODO does not work for Japanese
 
     # Get all passages from the same article that do not contain the answer
-    filtered_list = [item for item in dataset_merged[(dataset_merged[f"article_{doc_lang}"] == article) & (dataset_merged["id"] != id)][f"Document_{doc_lang}"].unique() if answer not in item and len(item.strip().split(" ")) >= 50]
+    filtered_list = [item for item in dataset_merged[(dataset_merged[f"article_{doc_lang}"] == article) & (dataset_merged["id"] != id)][f"Document_{doc_lang}"].unique() if answer not in item and len(item.strip().split(" ")) >= 50] #TODO does not work for Japanese
 
     # For half the negative Context Relevance examples, use a passage from the same article that does not contain the answer, for the other half use a random passage
     if row % 2 == 0 and filtered_list:

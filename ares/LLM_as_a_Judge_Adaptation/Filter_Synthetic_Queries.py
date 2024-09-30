@@ -41,7 +41,7 @@ def get_embedding(text: str, model: str = "text-embedding-ada-002") -> list:
     
     # Truncate text to the first 50 words if it exceeds 50 words
     if len(text) > 50:
-        text = " ".join(text.split(" ")[:50])
+        text = " ".join(text.split(" ")[:50]) #TODO does not work for Japanese
     
     return embedding_model.encode(text, normalize_embeddings=True).tolist()
     # Attempt to generate the embedding up to 5 times in case of failure

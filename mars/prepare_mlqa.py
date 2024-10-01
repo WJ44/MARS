@@ -118,9 +118,9 @@ dataset = pd.concat([
 # Precompute possible incorrect passages and answers
 incorrect_passages_dict = {}
 incorrect_answers_dict = {}
-for doc_lang in ["en", "de"]:
-    incorrect_passages_dict[doc_lang] = dataset_merged[[f"Document_{doc_lang}", f"article_{doc_lang}"]].drop_duplicates(subset=[f"Document_{doc_lang}"])
-    incorrect_answers_dict[doc_lang] = dataset_merged[f"Answer_{doc_lang}"].unique()
+for lang in ["en", "de"]:
+    incorrect_passages_dict[lang] = dataset_merged[[f"Document_{lang}", f"article_{lang}"]].drop_duplicates(subset=[f"Document_{lang}"])
+    incorrect_answers_dict[lang] = dataset_merged[f"Answer_{lang}"].unique()
 
 incorrect_passages = []
 context_relevance_labels = []
@@ -163,7 +163,7 @@ for row in tqdm(range(len(dataset))):
         unfaithful_passages.append(document)
 
     # Sample incorrect answer
-    incorrect_answer = random.choice([ans for ans in incorrect_answers_dict[doc_lang] if ans != answer])
+    incorrect_answer = random.choice([ans for ans in incorrect_answers_dict[qa_lang] if ans != answer])
     incorrect_answers.append(incorrect_answer)
     answer_relevance_labels.append(0)
 
@@ -204,6 +204,10 @@ dataset['Context_Relevance_Label'] = 1
 dataset['Answer_Faithfulness_Label'] = 1
 dataset['Answer_Relevance_Label'] = 1
 dataset['Language_Consistency_Label'] = 1
+
+# Set Answer_Relenvance_Label to NaN when document and answer language are not the same (sihce documents are irrelevant)
+dataset.loc[dataset["doc_lang"] != dataset["qa_lang"], "Answer_Relevance_Label"] = None
+dataset_copy_2.loc[dataset_copy_2["doc_lang"] != dataset_copy_2["qa_lang"], "Answer_Relevance_Label"] = None
 
 # Create datasets with different positive/negative ratios
 positive_negative_ratios = [0.5, 0.525, 0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7]

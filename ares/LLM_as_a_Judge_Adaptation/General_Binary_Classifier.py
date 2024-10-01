@@ -54,10 +54,11 @@ def combine_query_document(query: str, document: str = None, answer: str = None)
     str: A combined string of the query, cleaned document, and optionally the answer.
     """
     # Clean the document by removing extra newlines, carriage returns, and tabs
-    cleaned_document = re.sub(r'\n+', '\n', document.replace("\r", " ").replace("\t", " ")).strip()
-    cleaned_document = cleaned_document.replace("=", " ").replace("-", " ")
-    cleaned_document = re.sub(r'\s+', ' ', cleaned_document).strip()
-    cleaned_document = " ".join(cleaned_document.split(" ")[:512]) #TODO does not work for Japanese
+    if document:
+        cleaned_document = re.sub(r'\n+', '\n', document.replace("\r", " ").replace("\t", " ")).strip()
+        cleaned_document = cleaned_document.replace("=", " ").replace("-", " ")
+        cleaned_document = re.sub(r'\s+', ' ', cleaned_document).strip()
+        cleaned_document = " ".join(cleaned_document.split(" ")[:512]) #TODO does not work for Japanese
 
     # Truncate the query if it is too long
     if len(query.split(" ")) > 100: # TODO does not work for Japanese
@@ -66,6 +67,8 @@ def combine_query_document(query: str, document: str = None, answer: str = None)
     # Combine query and cleaned document, optionally including the answer
     if answer is None:
         return query + " | " + cleaned_document
+    elif document is None:
+        return query + " | " + answer
     else:
         try:
             return query + " | " + cleaned_document + " | " + answer

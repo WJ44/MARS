@@ -9,7 +9,7 @@ from datasets import load_dataset
 
 random.seed(42)
 
-SPLIT = "dev" # Choose between "dev" and "test"
+SPLIT = "test" # Choose between "dev" and "test"
 
 # Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
@@ -163,9 +163,10 @@ for row in tqdm(range(len(dataset))):
         unfaithful_passages.append(document)
 
     # Sample incorrect answer
-    incorrect_answer = random.choice([ans for ans in incorrect_answers_dict[qa_lang] if ans != answer])
-    incorrect_answers.append(incorrect_answer)
-    answer_relevance_labels.append(0)
+    if qa_lang == doc_lang:
+        incorrect_answer = random.choice([ans for ans in incorrect_answers_dict[qa_lang] if ans != answer])
+        incorrect_answers.append(incorrect_answer)
+        answer_relevance_labels.append(0)
 
     if row % 4 == 2 or row % 4 == 3:
         unfaithful_answers.append(incorrect_answer)
@@ -186,8 +187,8 @@ dataset_copy_1["Document"] = incorrect_passages
 dataset_copy_1["Context_Relevance_Label"] = context_relevance_labels
 dataset_copy_1 = dataset_copy_1.sample(n=len(dataset_copy_1), random_state=42)
 
-dataset_copy_2["Answer"] = incorrect_answers
-dataset_copy_2["Answer_Relevance_Label"] = answer_relevance_labels
+dataset_copy_2["Answer"] = incorrect_answers +  incorrect_answers
+dataset_copy_2["Answer_Relevance_Label"] = answer_relevance_labels + answer_relevance_labels
 dataset_copy_2 = dataset_copy_2.sample(n=len(dataset_copy_2), random_state=42)
 
 dataset_copy_3["Answer"] = incorrect_language
@@ -204,10 +205,6 @@ dataset['Context_Relevance_Label'] = 1
 dataset['Answer_Faithfulness_Label'] = 1
 dataset['Answer_Relevance_Label'] = 1
 dataset['Language_Consistency_Label'] = 1
-
-# Set Answer_Relenvance_Label to NaN when document and answer language are not the same (sihce documents are irrelevant)
-dataset.loc[dataset["doc_lang"] != dataset["qa_lang"], "Answer_Relevance_Label"] = None
-dataset_copy_2.loc[dataset_copy_2["doc_lang"] != dataset_copy_2["qa_lang"], "Answer_Relevance_Label"] = None
 
 # Create datasets with different positive/negative ratios
 if SPLIT == "test": 

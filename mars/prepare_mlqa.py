@@ -9,7 +9,7 @@ from datasets import load_dataset
 
 random.seed(42)
 
-SPLIT = "test" # Choose between "dev" and "test"
+SPLIT = "dev" # Choose between "dev" and "test"
 
 # Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
@@ -210,7 +210,10 @@ dataset.loc[dataset["doc_lang"] != dataset["qa_lang"], "Answer_Relevance_Label"]
 dataset_copy_2.loc[dataset_copy_2["doc_lang"] != dataset_copy_2["qa_lang"], "Answer_Relevance_Label"] = None
 
 # Create datasets with different positive/negative ratios
-positive_negative_ratios = [0.5, 0.525, 0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7]
+if SPLIT == "test": 
+    positive_negative_ratios = [0.5, 0.525, 0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7]
+elif SPLIT == "dev":
+    positive_negative_ratios = [0.5]
 ids = pd.DataFrame(dataset["id"].unique())
 ids_copy_1 = ids.copy()
 ids_copy_2 = ids.copy()

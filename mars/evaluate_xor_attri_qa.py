@@ -3,7 +3,7 @@ import json
 
 for lang1, lang2 in [("en", "en"), ("ja", "ja"), ("ja", "en"), ("en", "ja")]:
     ppi_config = {
-        "evaluation_datasets": [f"multilingual_data/attri_qa_test_ratio_0.5_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.525_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.55_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.575_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.6_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.625_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.65_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.675_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.7_{lang1}_{lang2}.tsv"],
+        "evaluation_datasets": [f"multilingual_data/attri_qa_test_{lang1}_{lang2}.tsv"],
         "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt"],
         "rag_type": "question_answering",
         "labels": ["Answer_Faithfulness_Label"],
@@ -20,7 +20,7 @@ for lang1, lang2 in [("en", "en"), ("ja", "ja"), ("ja", "en"), ("en", "ja")]:
 
 
 ppi_config = {
-    "evaluation_datasets": ["multilingual_data/attri_qa_test_ratio_0.5.tsv", "multilingual_data/attri_qa_test_ratio_0.525.tsv", "multilingual_data/attri_qa_test_ratio_0.55.tsv", "multilingual_data/attri_qa_test_ratio_0.575.tsv", "multilingual_data/attri_qa_test_ratio_0.6.tsv", "multilingual_data/attri_qa_test_ratio_0.625.tsv", "multilingual_data/attri_qa_test_ratio_0.65.tsv", "multilingual_data/attri_qa_test_ratio_0.675.tsv", "multilingual_data/attri_qa_test_ratio_0.7.tsv"],
+    "evaluation_datasets": ["multilingual_data/attri_qa_test.tsv"],
     "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt"],
     "rag_type": "question_answering",
     "labels": ["Answer_Faithfulness_Label"],

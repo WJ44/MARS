@@ -3,7 +3,7 @@ from scipy.stats import kendalltau
 import matplotlib.pyplot as plt
 import tikzplotlib
 
-experiment_name = "all"
+experiment_name = "en-de"
 
 file_path = f"results_{experiment_name}.json"
 

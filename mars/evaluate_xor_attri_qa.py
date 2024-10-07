@@ -6,7 +6,7 @@ for lang1, lang2 in [("en", "en"), ("ja", "ja"), ("ja", "en"), ("en", "ja")]:
         "evaluation_datasets": [f"multilingual_data/attri_qa_test_ratio_0.5_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.525_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.55_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.575_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.6_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.625_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.65_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.675_{lang1}_{lang2}.tsv", f"multilingual_data/attri_qa_test_ratio_0.7_{lang1}_{lang2}.tsv"],
         "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt"],
         "rag_type": "question_answering",
-        "labels": ["Context_Relevance_Label", "Answer_Relevance_Label", "Answer_Faithfulness_Label", "Language_Consistency_Label"],
+        "labels": ["Answer_Faithfulness_Label"],
         "gold_label_paths": [f"multilingual_data/attri_qa_dev_{lang1}_{lang2}.tsv"],
         "model_choice": "microsoft/mdeberta-v3-base",
         "assigned_batch_size": 32,

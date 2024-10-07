@@ -1293,10 +1293,16 @@ def evaluate_and_scoring_data(params: dict):
         elif label_column == "Answer_Faithfulness_Label":
             prediction_column_name = "ARES_Answer_Faithfulness_Prediction"
         elif label_column == "Language_Consistency_Label":
-                    prediction_column_name = "ARES_Language_Consistency_Prediction"
+            prediction_column_name = "ARES_Language_Consistency_Prediction"
 
-        Yhat_unlabeled_dataset.rename(columns={prediction_column: prediction_column_name}, inplace=True)
-        Yhat_unlabeled_dataset.to_csv(prediction_filepath, sep='\t', index=False)
+        if os.path.exists(prediction_filepath):
+            existing_predictions = pd.read_csv(prediction_filepath, sep="\t")
+            existing_predictions[prediction_column_name] = Yhat_unlabeled_dataset[prediction_column].values
+        else:
+            existing_predictions = Yhat_unlabeled_dataset
+            Yhat_unlabeled_dataset.rename(columns={prediction_column: prediction_column_name}, inplace=True)
+
+        existing_predictions.to_csv(prediction_filepath, sep='\t', index=False)
         print("--------------------------------------------------")
         print(f"Labeled dataset with predictions saved to {prediction_filepath}")
         print("--------------------------------------------------")

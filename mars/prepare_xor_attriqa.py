@@ -65,42 +65,6 @@ dataset = pd.concat([
     pd.read_csv(f"multilingual_data/attri_qa_{SPLIT}_en_ja.tsv", sep="\t")
 ], axis=0, ignore_index=True)
 
-if SPLIT == "dev":
-    dataset = dataset.sample(n=len(dataset), random_state=42)
-    dataset.to_csv(f"multilingual_data/attri_qa_{SPLIT}.tsv", sep="\t", index=False)
 
-# Get positive and negative Answer_Faithfulness samples
-dataset_copy_1 = dataset.copy()
-dataset = dataset[dataset["Answer_Faithfulness_Label"] == 1]
-dataset_copy_1 = dataset_copy_1[dataset_copy_1["Answer_Faithfulness_Label"] == 0]
-dataset_copy_1 = dataset_copy_1.sample(n=len(dataset_copy_1), random_state=42)
-
-if SPLIT == "test":
-    # Create datasets with different positive/negative ratios
-    positive_negative_ratios = [0.5, 0.525, 0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7]
-    ids = pd.DataFrame(dataset["id"].unique())
-    ids_copy_1 = pd.DataFrame(dataset_copy_1["id"].unique())
-
-    num_positives = len(ids) // max(positive_negative_ratios)
-    for ratio in positive_negative_ratios:
-        negatives_to_add = int((1 - ratio) * num_positives)
-        
-        positive_ids = ids.sample(n=int(ratio*num_positives), random_state=42)
-        # ids = ids.drop(positive_ids.index)
-        negative_ids_1 = ids_copy_1.sample(n=negatives_to_add, random_state=42)
-        ids_copy_1 = ids_copy_1.drop(negative_ids_1.index)
-
-        split = dataset[dataset["id"].isin(positive_ids[0])]
-        split_copy_1 = dataset_copy_1[dataset_copy_1["id"].isin(negative_ids_1[0])]
-
-        dataset_combined = pd.concat([split, split_copy_1], axis=0, ignore_index=True)
-        dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)
-
-        file_path = f"multilingual_data/attri_qa_{SPLIT}_ratio_{ratio}.tsv"
-        dataset_combined.to_csv(file_path, sep="\t", index=False)
-
-        for lang1, lang2 in [("en", "en"), ("ja", "ja"), ("ja", "en"), ("en", "ja")]:
-            file_path = f"multilingual_data/attri_qa_{SPLIT}_ratio_{ratio}_{lang1}_{lang2}.tsv"
-            dataset_filtered = dataset_combined[(dataset_combined["doc_lang"] == lang1) & (dataset_combined["qa_lang"] == lang2)]
-            
-            dataset_filtered.to_csv(file_path, sep="\t", index=False)
+dataset = dataset.sample(n=len(dataset), random_state=42)
+dataset.to_csv(f"multilingual_data/attri_qa_{SPLIT}.tsv", sep="\t", index=False)

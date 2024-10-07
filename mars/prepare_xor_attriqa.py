@@ -30,13 +30,13 @@ dataset_merged["Query_en"] = xor_attriqa_split["query_translated_en"]
 dataset_merged["Document_ja"] = xor_attriqa_split["passage_in_language"]
 dataset_merged["Answer_ja"] = xor_attriqa_split["prediction"]
 dataset_merged["Query_ja"] = xor_attriqa_split["query"]
-dataset_merged["Answer_Faithfulness"] = xor_attriqa_split["ais"].apply(lambda x: 1 if x == True else 0)
+dataset_merged["Answer_Faithfulness_Label"] = xor_attriqa_split["ais"].apply(lambda x: 1 if x == True else 0)
 dataset_merged["id"] = dataset_merged["Document_en"].astype(str) + dataset_merged["Query_en"].astype(str)
 dataset_merged["id"] = dataset_merged["id"].apply(hash)
 
 # Sample few-shot examples
 if SPLIT == "test":
-    few_shot = dataset_merged[dataset_merged["Answer_Faithfulness"] == 1].sample(n=4, random_state=41)
+    few_shot = dataset_merged[dataset_merged["Answer_Faithfulness_Label"] == 1].sample(n=4, random_state=41)
     dataset_merged = dataset_merged.drop(few_shot.index)
 
 # Function to create few-shot example files
@@ -80,7 +80,7 @@ def create_dataset_file(dataset, doc_lang, qa_lang, filename):
     dataset_copy["id"] = dataset["id"]
     dataset_copy["doc_lang"] = doc_lang
     dataset_copy["qa_lang"] = qa_lang
-    dataset_copy["Answer_Faithfulness"] = dataset["Answer_Faithfulness"]
+    dataset_copy["Answer_Faithfulness_Label"] = dataset["Answer_Faithfulness_Label"]
 
     if SPLIT == "dev":
         dataset_copy = dataset_copy.sample(n=len(dataset_copy), random_state=42)
@@ -122,8 +122,8 @@ language_consistency_labels = []
 
 # Get positive and negative Answer_Faithfulness samples
 dataset_copy_1 = dataset.copy()
-dataset = dataset[dataset["Answer_Faithfulness"] == 1]
-dataset_copy_1 = dataset_copy_1[dataset_copy_1["Answer_Faithfulness"] == 0]
+dataset = dataset[dataset["Answer_Faithfulness_Label"] == 1]
+dataset_copy_1 = dataset_copy_1[dataset_copy_1["Answer_Faithfulness_Label"] == 0]
 dataset_copy_1 = dataset_copy_1.sample(n=len(dataset_copy_1), random_state=42)
 
 # Generate negative examples
@@ -151,9 +151,9 @@ for row in tqdm(range(len(dataset))):
 dataset_copy_2 = dataset.copy()
 dataset_copy_3 = dataset.copy()
 dataset_copy_4 = dataset.copy()
-dataset_copy_2 = dataset_copy_2.drop(columns=["Answer_Faithfulness"])
-dataset_copy_3 = dataset_copy_3.drop(columns=["Answer_Faithfulness"])
-dataset_copy_4 = dataset_copy_4.drop(columns=["Answer_Faithfulness"])
+dataset_copy_2 = dataset_copy_2.drop(columns=["Answer_Faithfulness_Label"])
+dataset_copy_3 = dataset_copy_3.drop(columns=["Answer_Faithfulness_Label"])
+dataset_copy_4 = dataset_copy_4.drop(columns=["Answer_Faithfulness_Label"])
 
 dataset_copy_2["Document"] = incorrect_passages
 dataset_copy_2["Context_Relevance_Label"] = context_relevance_labels

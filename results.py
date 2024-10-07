@@ -3,7 +3,7 @@ from scipy.stats import kendalltau
 import matplotlib.pyplot as plt
 import tikzplotlib
 
-experiment_name = "en-de"
+experiment_name = "XOR-AttriQA ja-en"
 
 file_path = f"results_{experiment_name}.json"
 

@@ -1,3 +1,4 @@
+import os
 from ares.RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import begin
 from ares.RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import filter_dataset
 from ares.RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import preprocess_data
@@ -70,6 +71,11 @@ machine_label_llm_model, gold_machine_label_path, prediction_filepaths):
         pairings = ((None, label) for label in labels)
 
     all_evaluation_results = []
+
+    # remove prediction filepath files
+    for prediction_filepath in prediction_filepaths:
+        if os.path.exists(prediction_filepath):
+            os.remove(prediction_filepath)
     
     for idx, (checkpoint, label_column) in enumerate(pairings):
 

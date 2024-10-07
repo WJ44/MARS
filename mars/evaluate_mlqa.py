@@ -10,7 +10,7 @@ for lang1, lang2 in [("en", "en"), ("de", "de"), ("de", "en"), ("en", "de")]:
         "gold_label_paths": [f"multilingual_data/mlqa_dev_ratio_0.5_{lang1}_{lang2}.tsv"],
         "model_choice": "microsoft/mdeberta-v3-base",
         "assigned_batch_size": 32,
-        "prediction_filepaths": [f"results_output_{lang1}_{lang2}_Context_Relevance.json", f"results_output_{lang1}_{lang2}_Answer_Relevance.json", f"results_output_{lang1}_{lang2}_Answer_Faithfulness.json", f"results_output_{lang1}_{lang2}_Language_Consistency.json"],
+        "prediction_filepaths": [f"results_output_ratio_0.5_{lang1}_{lang2}.json", f"results_output_ratio_0.525_{lang1}_{lang2}.json", f"results_output_ratio_0.55_{lang1}_{lang2}.json", f"results_output_ratio_0.575_{lang1}_{lang2}.json", f"results_output_ratio_0.6_{lang1}_{lang2}.json", f"results_output_ratio_0.625_{lang1}_{lang2}.json", f"results_output_ratio_0.65_{lang1}_{lang2}.json", f"results_output_ratio_0.675_{lang1}_{lang2}.json", f"results_output_ratio_0.7_{lang1}_{lang2}.json"],
     }
 
     ares_module = ARES(ppi=ppi_config)
@@ -27,7 +27,7 @@ ppi_config = {
     "gold_label_paths": ["multilingual_data/mlqa_dev_ratio_0.5.tsv"],
     "model_choice": "microsoft/mdeberta-v3-base",
     "assigned_batch_size": 32,
-    "prediction_filepaths": ["results_output_Context_Relevance.json", "results_output_Answer_Relevance.json", "results_output_Answer_Faithfulness.json", "results_output_Language_Consistency.json"],
+    "prediction_filepaths": ["results_output_ratio_0.5.json", "results_output_ratio_0.525.json", "results_output_ratio_0.55.json", "results_output_ratio_0.575.json", "results_output_ratio_0.6.json", "results_output_ratio_0.625.json", "results_output_ratio_0.65.json", "results_output_ratio_0.675.json", "results_output_ratio_0.7.json"],
 }
 
 ares_module = ARES(ppi=ppi_config)

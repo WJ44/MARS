@@ -81,7 +81,7 @@ if SPLIT == "test":
     ids = pd.DataFrame(dataset["id"].unique())
     ids_copy_1 = pd.DataFrame(dataset_copy_1["id"].unique())
 
-    num_positives = len(ids)
+    num_positives = len(ids) // max(positive_negative_ratios)
     for ratio in positive_negative_ratios:
         negatives_to_add = int((1 - ratio) * num_positives)
         

@@ -30,12 +30,12 @@ for lang in cora_xorqa["qa_lang"].unique():
 
 ppi_config = {
     "evaluation_datasets": ["baselines/cora_xorqa_ja.tsv"],
-    "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Context_Relevance_Label_mlqa_dev_ratio_0.7_2024-09-09_09:47:37.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Relevance_Label_mlqa_dev_ratio_0.7_2024-09-09_14:52:34.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Relevance_Label_mlqa_dev_ratio_0.7_2024-09-09_14:52:34.pt", "checkpoints/microsoft-mdeberta-v3-base/Language_Consistency_Label_mlqaqa_dev_ratio_0.7_2024-09-10_10:31:55.pt"],
+    "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Context_Relevance_Label_mlqa_dev_ratio_0.5_2024-09-30_15:27:39.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Relevance_Label_mlqa_dev_ratio_0.5_2024-10-01_07:58:16.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt", "checkpoints/microsoft-mdeberta-v3-base/Language_Consistency_Label_mlqa_dev_ratio_0.5_2024-10-02_13:18:21.pt"],
     "rag_type": "question_answering",
     "labels": ["Context_Relevance_Label", "Answer_Relevance_Label", "Answer_Faithfulness_Label", "Language_Consistency_Label"],
     "gold_label_paths": ["multilingual_data/xor_attri_qa_dev.tsv"],
     "model_choice": "microsoft/mdeberta-v3-base",
-    "assigned_batch_size": 1,
+    "assigned_batch_size": 32,
     "prediction_filepaths": ["baselines/cora_xorqa_ja_preds.tsv"],
 }
 

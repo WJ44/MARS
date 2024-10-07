@@ -1072,7 +1072,7 @@ def post_process_predictions(params: dict):
         test_set = test_set[test_set[label_column].notna()]
         
     for label in labels:
-        if label != label_column:
+        if label != label_column and label in test_set.columns:
             test_set = test_set[test_set[label] != 0]
 
     # Generate machine labels if parameters are provided

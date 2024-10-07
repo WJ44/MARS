@@ -10,7 +10,7 @@ for lang1, lang2 in [("en", "en"), ("de", "de"), ("de", "en"), ("en", "de")]:
         "gold_label_paths": [f"multilingual_data/mlqa_dev_ratio_0.5_{lang1}_{lang2}.tsv"],
         "model_choice": "microsoft/mdeberta-v3-base",
         "assigned_batch_size": 32,
-        "prediction_file_paths": [f"results_output_{lang1}_{lang2}_Context_Relevance.json", f"results_output_{lang1}_{lang2}_Answer_Relevance.json", f"results_output_{lang1}_{lang2}_Answer_Faithfulness.json", f"results_output_{lang1}_{lang2}_Language_Consistency.json"],
+        "prediction_filepaths": [f"results_output_{lang1}_{lang2}_Context_Relevance.json", f"results_output_{lang1}_{lang2}_Answer_Relevance.json", f"results_output_{lang1}_{lang2}_Answer_Faithfulness.json", f"results_output_{lang1}_{lang2}_Language_Consistency.json"],
     }
 
     ares_module = ARES(ppi=ppi_config)
@@ -27,7 +27,7 @@ ppi_config = {
     "gold_label_paths": ["multilingual_data/mlqa_dev_ratio_0.5.tsv"],
     "model_choice": "microsoft/mdeberta-v3-base",
     "assigned_batch_size": 32,
-    "prediction_file_paths": ["results_output_Context_Relevance.json", "results_output_Answer_Relevance.json", "results_output_Answer_Faithfulness.json", "results_output_Language_Consistency.json"],
+    "prediction_filepaths": ["results_output_Context_Relevance.json", "results_output_Answer_Relevance.json", "results_output_Answer_Faithfulness.json", "results_output_Language_Consistency.json"],
 }
 
 ares_module = ARES(ppi=ppi_config)

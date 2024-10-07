@@ -36,7 +36,7 @@ ppi_config = {
     "gold_label_paths": ["multilingual_data/mlqa_dev_ratio_0.5.tsv"],
     "model_choice": "microsoft/mdeberta-v3-base",
     "assigned_batch_size": 32,
-    "prediction_filepaths": ["baselines/cora_xorqa_ja_preds.tsv"],
+    "prediction_filepaths": ["baselines/cora_xorqa_ja_preds_Context_Relevance_Label.tsv", "baselines/cora_xorqa_ja_preds_Answer_Relevance_Label.tsv", "baselines/cora_xorqa_ja_preds_Answer_Faithfulness_Label.tsv", "baselines/cora_xorqa_ja_preds_Language_Consistency_Label.tsv"],
 }
 
 ares_module = ARES(ppi=ppi_config)

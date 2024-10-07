@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 random.seed(42)
 
-SPLIT = "dev" # Choose between "dev" and "test"
+SPLIT = "test" # Choose between "dev" and "test"
 
 if SPLIT == "test":
     DATASET_PATH = "multilingual_data/xor_attriqa/in-language/ja.jsonl"
@@ -204,11 +204,11 @@ if SPLIT == "test":
         dataset_combined = pd.concat([split, split_copy_1, split_copy_2, split_copy_3, split_copy_4], axis=0, ignore_index=True)
         dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)
 
-        file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}.tsv"
+        file_path = f"multilingual_data/attri_qa_{SPLIT}_ratio_{ratio}.tsv"
         dataset_combined.to_csv(file_path, sep="\t", index=False)
 
-        for lang1, lang2 in [("en", "en"), ("de", "de"), ("de", "en"), ("en", "de")]:
-            file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}_{lang1}_{lang2}.tsv"
+        for lang1, lang2 in [("en", "en"), ("ja", "ja"), ("ja", "en"), ("en", "ja")]:
+            file_path = f"multilingual_data/attri_qa_{SPLIT}_ratio_{ratio}_{lang1}_{lang2}.tsv"
             dataset_filtered = dataset_combined[(dataset_combined["doc_lang"] == lang1) & (dataset_combined["qa_lang"] == lang2)]
             
             dataset_filtered.to_csv(file_path, sep="\t", index=False)

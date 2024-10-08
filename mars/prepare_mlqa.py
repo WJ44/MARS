@@ -4,24 +4,30 @@ import random
 import pandas as pd
 from tqdm import tqdm
 from datasets import load_dataset
+from itertools import product
 
 #Note: Then negative Answer_Faithfulness samples are not a good representation of hallucinated answers. They are just random answers from the dataset.
 
 random.seed(42)
 
-SPLIT = "test" # Choose between "dev" and "test"
+SPLIT = "dev" # Choose between "dev" and "test"
+
+LANGS = ["en", "ar"]
 
 # Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
 DE_INDEX_PATH = f"multilingual_data/mlqa_index_de_{SPLIT}.json"
+AR_INDEX_PATH = f"multilingual_data/mlqa_index_ar_{SPLIT}.json"
 
 # Load external information about MLQA dataset
 with open(EN_INDEX_PATH, "r") as f:
     indexes_en = json.load(f)
 with open(DE_INDEX_PATH, "r") as f:
     indexes_de = json.load(f)
+with open(AR_INDEX_PATH, "r") as f:
+    indexes_ar = json.load(f)
 
-indexes = {"en": indexes_en, "de": indexes_de}
+indexes = {"en": indexes_en, "de": indexes_de, "ar": indexes_ar}
 
 def load_and_process_dataset(language_code):
     mlqa_total = load_dataset("facebook/mlqa", name=f"mlqa.{language_code}.{language_code}")
@@ -41,9 +47,11 @@ def load_and_process_dataset(language_code):
 # Load and process datasets
 dataset_en_en = load_and_process_dataset("en")
 dataset_de_de = load_and_process_dataset("de")
+dataset_ar_ar = load_and_process_dataset("ar")
 
 # Combine English and German datasets
 dataset_merged = pd.merge(dataset_en_en, dataset_de_de, on="id")
+dataset_merged = pd.merge(dataset_merged, dataset_ar_ar, on="id")
 
 # Sample few-shot examples
 if SPLIT == "test":
@@ -87,7 +95,7 @@ def create_few_shot_files(few_shot):
         df.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
         df.to_csv(f"multilingual_data/{filename}", sep="\t", index=False)
 
-if SPLIT == "test" and not os.path.exists(f"multilingual_data/mlqa_{SPLIT}_few_shot_en_en.tsv"):
+if SPLIT == "test" and LANGS == ["en", "de"] and not os.path.exists(f"multilingual_data/mlqa_{SPLIT}_few_shot_en_en.tsv"):
     create_few_shot_files(few_shot)
 
 # Function to create dataset files
@@ -102,23 +110,18 @@ def create_dataset_file(dataset, doc_lang, qa_lang, filename):
     dataset_copy.to_csv(filename, sep="\t", index=False)
 
 # Create monolingual and cross-lingual datasets
-create_dataset_file(dataset_merged, "en", "en", f"multilingual_data/mlqa_{SPLIT}_en_en.tsv")
-create_dataset_file(dataset_merged, "de", "de", f"multilingual_data/mlqa_{SPLIT}_de_de.tsv")
-create_dataset_file(dataset_merged, "de", "en", f"multilingual_data/mlqa_{SPLIT}_de_en.tsv")
-create_dataset_file(dataset_merged, "en", "de", f"multilingual_data/mlqa_{SPLIT}_en_de.tsv")
+for lang1, lang2 in product(LANGS, repeat=2):
+    create_dataset_file(dataset_merged, lang1, lang2, f"multilingual_data/mlqa_{SPLIT}_{lang1}_{lang2}.tsv")
 
 # Combine all datasets
 dataset = pd.concat([
-    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_en_en.tsv", sep="\t"),
-    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_de_de.tsv", sep="\t"),
-    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_de_en.tsv", sep="\t"),
-    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_en_de.tsv", sep="\t")
+    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_{lang1}_{lang2}.tsv", sep="\t") for lang1, lang2 in product(LANGS, repeat=2)
 ], axis=0, ignore_index=True)
 
 # Precompute possible incorrect passages and answers
 incorrect_passages_dict = {}
 incorrect_answers_dict = {}
-for lang in ["en", "de"]:
+for lang in LANGS:
     incorrect_passages_dict[lang] = dataset_merged[[f"Document_{lang}", f"article_{lang}"]].drop_duplicates(subset=[f"Document_{lang}"])
     incorrect_answers_dict[lang] = dataset_merged[f"Answer_{lang}"].unique()
 
@@ -175,7 +178,7 @@ for row in tqdm(range(len(dataset))):
         unfaithful_answers.append(answer)
 
     # Sample incorrect language answer
-    incorrect_language.append(dataset_merged.loc[dataset_merged["id"] == id].iloc[0][f"Answer_{'de' if qa_lang == 'en' else 'en'}"])
+    incorrect_language.append(dataset_merged.loc[dataset_merged["id"] == id].iloc[0][f"Answer_{LANGS[0] if qa_lang == LANGS[1] else LANGS[1]}"])
     language_consistency_labels.append(0)
 
 dataset_copy_1 = dataset.copy()
@@ -241,10 +244,12 @@ for ratio in positive_negative_ratios:
     dataset_combined = pd.concat([split, split_copy_1, split_copy_2, split_copy_3, split_copy_4], axis=0, ignore_index=True)
     dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)
 
-    file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}.tsv"
-    dataset_combined.to_csv(file_path, sep="\t", index=False)
+    file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}_{LANGS[1]}.tsv"
+    # For every id, only keep a single combination of qa_lang and doc_lang, randomly
+    dataset_reduced = dataset_combined.drop_duplicates(subset=["id", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label"])
+    dataset_reduced.to_csv(file_path, sep="\t", index=False)
 
-    for lang1, lang2 in [("en", "en"), ("de", "de"), ("de", "en"), ("en", "de")]:
+    for lang1, lang2 in product(LANGS, repeat=2):
         file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}_{lang1}_{lang2}.tsv"
         dataset_filtered = dataset_combined[(dataset_combined["doc_lang"] == lang1) & (dataset_combined["qa_lang"] == lang2)]
         

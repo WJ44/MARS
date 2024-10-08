@@ -5,7 +5,7 @@ import json
 SPLIT = "dev"
 
 # Saves the artice title for each passage, this information is not easily available in the dataset as published on Hugginface
-langs = ["en", "de"]
+langs = ["en", "de", "ar"]
 for lang in langs:
     with open(f"multilingual_data/MLQA_V1/{SPLIT}/{SPLIT}-context-{lang}-question-{lang}.json", "r") as f:
         data = json.load(f)

@@ -1,7 +1,28 @@
 from ares import ARES
 import json
+from itertools import product
 
-for lang1, lang2 in [("en", "en"), ("de", "de"), ("de", "en"), ("en", "de")]:
+#TODO: TEMP
+LANGS = ["en", "de"]
+ppi_config = {
+    "evaluation_datasets": [f"multilingual_data/mlqa_test_ratio_0.5_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.525_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.55_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.575_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.6_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.625_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.65_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.675_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.7_{LANGS[1]}.tsv"],
+    "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Context_Relevance_Label_mlqa_dev_ratio_0.5_2024-09-30_15:27:39.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Relevance_Label_mlqa_dev_ratio_0.5_2024-10-01_07:58:16.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt", "checkpoints/microsoft-mdeberta-v3-base/Language_Consistency_Label_mlqa_dev_ratio_0.5_2024-10-02_13:18:21.pt"],
+    "rag_type": "question_answering",
+    "labels": ["Context_Relevance_Label", "Answer_Relevance_Label", "Answer_Faithfulness_Label", "Language_Consistency_Label"],
+    "gold_label_paths": [f"multilingual_data/mlqa_dev_ratio_0.5_{LANGS[1]}.tsv"],
+    "model_choice": "microsoft/mdeberta-v3-base",
+    "assigned_batch_size": 32,
+    "prediction_filepaths": [f"results_output_ratio_0.5_{LANGS[1]}.json", f"results_output_ratio_0.525_{LANGS[1]}.json", f"results_output_ratio_0.55_{LANGS[1]}.json", f"results_output_ratio_0.575_{LANGS[1]}.json", f"results_output_ratio_0.6_{LANGS[1]}.json", f"results_output_ratio_0.625_{LANGS[1]}.json", f"results_output_ratio_0.65_{LANGS[1]}.json", f"results_output_ratio_0.675_{LANGS[1]}.json", f"results_output_ratio_0.7_{LANGS[1]}.json"],
+}
+
+ares_module = ARES(ppi=ppi_config)
+results = ares_module.evaluate_RAG()
+print(results)
+json.dump(results, open(f"results_{LANGS[1]}.json", "w"))
+
+LANGS = ["en", "ar"]
+
+for lang1, lang2 in product(LANGS, repeat=2):
     ppi_config = {
         "evaluation_datasets": [f"multilingual_data/mlqa_test_ratio_0.5_{lang1}_{lang2}.tsv", f"multilingual_data/mlqa_test_ratio_0.525_{lang1}_{lang2}.tsv", f"multilingual_data/mlqa_test_ratio_0.55_{lang1}_{lang2}.tsv", f"multilingual_data/mlqa_test_ratio_0.575_{lang1}_{lang2}.tsv", f"multilingual_data/mlqa_test_ratio_0.6_{lang1}_{lang2}.tsv", f"multilingual_data/mlqa_test_ratio_0.625_{lang1}_{lang2}.tsv", f"multilingual_data/mlqa_test_ratio_0.65_{lang1}_{lang2}.tsv", f"multilingual_data/mlqa_test_ratio_0.675_{lang1}_{lang2}.tsv", f"multilingual_data/mlqa_test_ratio_0.7_{lang1}_{lang2}.tsv"],
         "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Context_Relevance_Label_mlqa_dev_ratio_0.5_2024-09-30_15:27:39.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Relevance_Label_mlqa_dev_ratio_0.5_2024-10-01_07:58:16.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt", "checkpoints/microsoft-mdeberta-v3-base/Language_Consistency_Label_mlqa_dev_ratio_0.5_2024-10-02_13:18:21.pt"],
@@ -20,17 +41,17 @@ for lang1, lang2 in [("en", "en"), ("de", "de"), ("de", "en"), ("en", "de")]:
 
 
 ppi_config = {
-    "evaluation_datasets": ["multilingual_data/mlqa_test_ratio_0.5.tsv", "multilingual_data/mlqa_test_ratio_0.525.tsv", "multilingual_data/mlqa_test_ratio_0.55.tsv", "multilingual_data/mlqa_test_ratio_0.575.tsv", "multilingual_data/mlqa_test_ratio_0.6.tsv", "multilingual_data/mlqa_test_ratio_0.625.tsv", "multilingual_data/mlqa_test_ratio_0.65.tsv", "multilingual_data/mlqa_test_ratio_0.675.tsv", "multilingual_data/mlqa_test_ratio_0.7.tsv"],
+    "evaluation_datasets": [f"multilingual_data/mlqa_test_ratio_0.5_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.525_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.55_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.575_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.6_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.625_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.65_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.675_{LANGS[1]}.tsv", f"multilingual_data/mlqa_test_ratio_0.7_{LANGS[1]}.tsv"],
     "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Context_Relevance_Label_mlqa_dev_ratio_0.5_2024-09-30_15:27:39.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Relevance_Label_mlqa_dev_ratio_0.5_2024-10-01_07:58:16.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt", "checkpoints/microsoft-mdeberta-v3-base/Language_Consistency_Label_mlqa_dev_ratio_0.5_2024-10-02_13:18:21.pt"],
     "rag_type": "question_answering",
     "labels": ["Context_Relevance_Label", "Answer_Relevance_Label", "Answer_Faithfulness_Label", "Language_Consistency_Label"],
-    "gold_label_paths": ["multilingual_data/mlqa_dev_ratio_0.5.tsv"],
+    "gold_label_paths": [f"multilingual_data/mlqa_dev_ratio_0.5_{LANGS[1]}.tsv"],
     "model_choice": "microsoft/mdeberta-v3-base",
     "assigned_batch_size": 32,
-    "prediction_filepaths": ["results_output_ratio_0.5.json", "results_output_ratio_0.525.json", "results_output_ratio_0.55.json", "results_output_ratio_0.575.json", "results_output_ratio_0.6.json", "results_output_ratio_0.625.json", "results_output_ratio_0.65.json", "results_output_ratio_0.675.json", "results_output_ratio_0.7.json"],
+    "prediction_filepaths": [f"results_output_ratio_0.5_{LANGS[1]}.json", f"results_output_ratio_0.525_{LANGS[1]}.json", f"results_output_ratio_0.55_{LANGS[1]}.json", f"results_output_ratio_0.575_{LANGS[1]}.json", f"results_output_ratio_0.6_{LANGS[1]}.json", f"results_output_ratio_0.625_{LANGS[1]}.json", f"results_output_ratio_0.65_{LANGS[1]}.json", f"results_output_ratio_0.675_{LANGS[1]}.json", f"results_output_ratio_0.7_{LANGS[1]}.json"],
 }
 
 ares_module = ARES(ppi=ppi_config)
 results = ares_module.evaluate_RAG()
 print(results)
-json.dump(results, open("results.json", "w"))
+json.dump(results, open(f"results_{LANGS[1]}.json", "w"))

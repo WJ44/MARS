@@ -2,7 +2,7 @@ import json
 
 # Requires the MLQA dataset from: https://dl.fbaipublicfiles.com/MLQA/MLQA_V1.zip (https://github.com/facebookresearch/MLQA)
 
-SPLIT = "dev"
+SPLIT = "test"
 
 # Saves the artice title for each passage, this information is not easily available in the dataset as published on Hugginface
 langs = ["en", "de", "ar"]

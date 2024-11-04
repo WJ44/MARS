@@ -14,6 +14,8 @@ import torch
 from datasets import Dataset
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
+from typing import Union
+from vllm import LLM
 
 import openai
 from transformers import (AutoConfig, AutoModelForCausalLM, AutoModelForSeq2SeqLM,
@@ -207,7 +209,7 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
         answer = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
     else:
             input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
-
+    
             # Check for encoding issues and generate the answer
             if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
                 print("Length of problematic input ids: " + str(input_ids.shape))

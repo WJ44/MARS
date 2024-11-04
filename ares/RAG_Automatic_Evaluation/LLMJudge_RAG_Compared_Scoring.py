@@ -2,7 +2,7 @@ import torch.nn as nn
 from transformers import (
     T5Tokenizer, T5EncoderModel, T5ForConditionalGeneration, 
     BertModel, AutoTokenizer, AutoModel, GPT2Tokenizer, 
-    TrainingArguments, Trainer, get_scheduler, 
+    TrainingArguments, get_scheduler, 
     AutoModelForCausalLM, AutoConfig, AutoModelForSequenceClassification, 
     MptForSequenceClassification
 )
@@ -44,16 +44,17 @@ os.environ['PYTHONHASHSEED'] = str(random_state)
 os.environ["HUGGINGFACE_HUB_DISABLE_DOWNLOAD_PROGRESS"] = "1"
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 
-from ares.RAG_Automatic_Evaluation.ppi import clt_iid, binomial_iid, pp_mean_iid_asymptotic
 from ares.RAG_Automatic_Evaluation.Evaluation_Functions import (
-    calculate_accuracy, few_shot_context_relevance_scoring, 
-    few_shot_answer_faithfulness_scoring, few_shot_answer_relevance_scoring, 
+    calculate_accuracy, few_shot_answer_faithfulness_scoring_azure, few_shot_answer_relevance_scoring_azure, few_shot_context_relevance_scoring, 
+    few_shot_answer_faithfulness_scoring, few_shot_answer_relevance_scoring, few_shot_context_relevance_scoring_azure, 
     few_shot_context_relevance_scoring_togetherai, few_shot_answer_faithfulness_scoring_togetherai, 
     few_shot_answer_relevance_scoring_togetherai, few_shot_context_relevance_scoring_claude, 
     few_shot_answer_faithfulness_scoring_claude, few_shot_answer_relevance_scoring_claude, 
     few_shot_context_relevance_scoring_vllm, few_shot_answer_relevance_scoring_vllm, 
     few_shot_answer_faithfulness_scoring_vllm
 )
+
+from ares.RAG_Automatic_Evaluation.ppi import pp_mean_iid_asymptotic
 
 class CustomBERTModel(nn.Module):
     def __init__(self, number_of_labels: int, model_choice: str):
@@ -104,7 +105,11 @@ class CustomBERTModel(nn.Module):
             model_encoding = AutoModel.from_pretrained(model_choice)
             embedding_size = 1536
             self.encoderModel = model_encoding
-
+        elif "electra" in model_choice.lower():
+            config = AutoConfig.from_pretrained(model_choice)
+            self.encoderModel = AutoModel.from_pretrained(model_choice)
+            embedding_size = config.hidden_size
+            self.embedding_size = embedding_size
         elif model_choice in ["microsoft/deberta-v3-xsmall"]:
             model_encoding = AutoModel.from_pretrained(model_choice)
             embedding_size = 384
@@ -142,6 +147,10 @@ class CustomBERTModel(nn.Module):
         if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt", "mosaicml/mpt-1b-redpajama-200b"]:
             total_output = self.encoderModel(input_ids=ids, attention_mask=mask)
             return total_output['logits']
+        elif "electra" in self.model_choice.lower():
+            outputs = self.encoderModel(input_ids=ids, attention_mask=mask)
+            pooled_output = outputs.last_hidden_state[:, 0]
+            return self.classifier(pooled_output)
         else:
             # For other models, process the output through the classifier
             total_output = self.encoderModel(ids, attention_mask=mask)
@@ -185,7 +194,6 @@ def combine_query_document(query: str, document: str = None, answer: str = None)
         try:
             return query + " | " + cleaned_document + " | " + answer
         except Exception as e:
-            breakpoint()
             print("Error with combine_query_document")
             print("Query: " + str(query))
             print("Cleaned Document: " + str(cleaned_document))
@@ -594,7 +602,7 @@ def load_tokenizer_and_model(model_identifier: str, number_of_labels: int, check
     Raises:
     - FileNotFoundError: If the checkpoint file is not found.
     """
-    max_token_length = 2048
+    max_token_length = 512 if "electra" in model_identifier.lower() else 2048
     tokenizer = AutoTokenizer.from_pretrained(model_identifier, model_max_length=max_token_length)
     torch.cuda.empty_cache()
     device = torch.device("cuda:0")
@@ -603,11 +611,32 @@ def load_tokenizer_and_model(model_identifier: str, number_of_labels: int, check
     model.to(device)
 
     if checkpoint:
-        checkpoint_dict = torch.load(checkpoint)
-        if "encoderModel.embeddings.position_ids" in checkpoint_dict:
-            del checkpoint_dict["encoderModel.embeddings.position_ids"]
-        model.load_state_dict(checkpoint_dict)
-        print("Loaded model from checkpoint:", checkpoint)
+        checkpoint_dict = torch.load(checkpoint, map_location=torch.device('cpu'))
+        model_dict = model.state_dict()
+        
+        # Print some information about the checkpoint and model
+        print(f"Checkpoint keys: {len(checkpoint_dict)}")
+        print(f"Model keys: {len(model_dict)}")
+        
+        # Filter out unnecessary keys
+        pretrained_dict = {k: v for k, v in checkpoint_dict.items() if k in model_dict and v.shape == model_dict[k].shape}
+        
+        # Print information about matched and unmatched keys
+        print(f"Matched keys: {len(pretrained_dict)}")
+        print(f"Unmatched keys: {len(checkpoint_dict) - len(pretrained_dict)}")
+        
+        if len(pretrained_dict) == 0:
+            print("Warning: No keys matched between the checkpoint and the model!")
+            print("Checkpoint keys (first 10):", list(checkpoint_dict.keys())[:10])
+            print("Model keys (first 10):", list(model_dict.keys())[:10])
+            raise ValueError("No matching keys found between checkpoint and model")
+        
+        # Update model state dict
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict, strict=False)
+        
+        print(f"Loaded checkpoint: {checkpoint}")
+        print(f"Matched keys: {len(pretrained_dict)}/{len(model_dict)}")
     else:
         print("Loaded model based on model identifier:", model_identifier)
 
@@ -639,6 +668,7 @@ def evaluate_model(params: dict) -> tuple:
         - host_url (str): The host URL for the LLM judge.
         - request_delay (int): The delay between requests.
         - debug_mode (bool): Flag indicating if debug mode is enabled.
+        - azure_openai_config (dict): Information to config Azure model
 
     Returns:
     - tuple: A tuple containing total_predictions, total_references, results, and metric.
@@ -661,42 +691,96 @@ def evaluate_model(params: dict) -> tuple:
     host_url = params["host_url"]
     request_delay = params["request_delay"]
     debug_mode = params["debug_mode"]
+    azure_openai_config = params["azure_openai_config"]
 
     metric = evaluate.load("accuracy")
 
     if checkpoint:
-        total_predictions = torch.FloatTensor([]).to(device)
-        total_references = torch.FloatTensor([]).to(device)
-        total_logits = torch.FloatTensor([]).to(device)
-        eval_dataloader = prepare_dataset_for_evaluation(test_set, label_column, text_column, assigned_batch_size, tokenizer)
-        model.eval()
-        with tqdm(eval_dataloader, desc="Evaluating", leave=False) as progress_bar:
-            for batch in progress_bar:
-                with torch.no_grad():
-                    if model_choice in ["mosaicml/mpt-1b-redpajama-200b"]:
-                        new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].bool().to(device)}
-                    else:
-                        new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].to(device)}
+        if use_late_chunking:
+            from sentence_transformers import SentenceTransformer
+            from transformers import AutoTokenizer
+            from ares.LLM_as_a_Judge_Adaptation.Late_Chunking_Classifier import SBERTBinaryClassifier, get_late_chunked_embeddings, get_query_embedding
+            
+            # Load embedding model and tokenizer
+            embedding_model_name = "jinaai/jina-embeddings-v2-base-en"
+            embedding_model = SentenceTransformer(embedding_model_name, device=device, trust_remote_code=True)
+            embedding_model.max_seq_length = 8192
+            tokenizer = AutoTokenizer.from_pretrained(embedding_model_name, trust_remote_code=True)
+            
+            # Load trained classifier
+            embedding_size = embedding_model.get_sentence_embedding_dimension()
+            input_size = embedding_size * 2
+            num_labels = 2  # Binary classification
+            classifier_model = SBERTBinaryClassifier(embedding_dim=embedding_size)
+            classifier_model.to(device)
+            classifier_model.load_state_dict(torch.load(checkpoint))
+            classifier_model.eval()
 
-                    if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt"]:
-                        new_batch['decoder_input_ids'] = batch['labels'].reshape(batch['labels'].shape[0], 1).to(device)
-
-                    outputs = model(**new_batch)
-
-                    logits = outputs
-                    predictions = torch.argmax(logits, dim=-1)
+            total_predictions = []
+            total_references = []
+            with tqdm(total=len(test_set), desc="Evaluating with late chunking", leave=False) as progress_bar:
+                for index, row in test_set.iterrows():
+                    query = row['Query']
+                    document = row['Document']
+                    label = row.get(label_column, None)
                     
-                    if 'labels' in batch:
-                        # Add the batch to the metric
-                        metric.add_batch(predictions=predictions, references=batch['labels'].to(device))
-
-                        # Concatenate the references for later use
-                        total_references = torch.cat((total_references, batch['labels'].to(device)), 0)
-
-                    total_predictions = torch.cat((total_predictions, predictions), 0)
-                    total_logits = torch.cat((total_logits, logits), 0)
-
+                    # Generate embeddings
+                    doc_embedding = get_late_chunked_embeddings(document, embedding_model, tokenizer)
+                    query_embedding = get_query_embedding(query, embedding_model)
+                    
+                    # Convert to tensors and move to device
+                    doc_embedding_tensor = torch.tensor(doc_embedding, dtype=torch.float).unsqueeze(0).to(device)
+                    query_embedding_tensor = torch.tensor(query_embedding, dtype=torch.float).unsqueeze(0).to(device)
+                    
+                    # Get prediction from classifier
+                    with torch.no_grad():
+                        logits = classifier_model(doc_embedding_tensor, query_embedding_tensor)
+                        prediction = torch.argmax(logits, dim=-1).item()
+                    
+                    total_predictions.append(prediction)
+                    if label is not None:
+                        total_references.append(int(label))
                     progress_bar.update(1)
+            # Compute results if labels are available
+            if total_references:
+                results = metric.compute(references=total_references, predictions=total_predictions)
+            else:
+                results = None
+            
+            return total_predictions, total_references, results, metric
+        else: 
+            total_predictions = torch.FloatTensor([]).to(device)
+            total_references = torch.FloatTensor([]).to(device)
+            total_logits = torch.FloatTensor([]).to(device)
+            eval_dataloader = prepare_dataset_for_evaluation(test_set, label_column, text_column, assigned_batch_size, tokenizer)
+            model.eval()
+            with tqdm(eval_dataloader, desc="Evaluating", leave=False) as progress_bar:
+                for batch in progress_bar:
+                    with torch.no_grad():
+                        if model_choice in ["mosaicml/mpt-1b-redpajama-200b"]:
+                            new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].bool().to(device)}
+                        else:
+                            new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].to(device)}
+
+                        if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt"]:
+                            new_batch['decoder_input_ids'] = batch['labels'].reshape(batch['labels'].shape[0], 1).to(device)
+
+                        outputs = model(**new_batch)
+
+                        logits = outputs
+                        predictions = torch.argmax(logits, dim=-1)
+                        
+                        if 'labels' in batch:
+                            # Add the batch to the metric
+                            metric.add_batch(predictions=predictions, references=batch['labels'].to(device))
+
+                            # Concatenate the references for later use
+                            total_references = torch.cat((total_references, batch['labels'].to(device)), 0)
+
+                        total_predictions = torch.cat((total_predictions, predictions), 0)
+                        total_logits = torch.cat((total_logits, logits), 0)
+
+                        progress_bar.update(1)
     else:
         print("Performing Model scoring!")
         few_shot_examples = pd.read_csv(few_shot_examples_filepath, sep="\t")
@@ -713,7 +797,10 @@ def evaluate_model(params: dict) -> tuple:
         failed_extraction_count = 0
         
         if "Context_Relevance_Label" == label_column:
-            if vllm:
+            if azure_openai_config:
+                test_set["Context_Relevance_Prediction"] = test_set.progress_apply(lambda x: few_shot_context_relevance_scoring_azure(
+                    context_relevance_system_prompt, clean_query(x[query_id]), x["Document"], azure_openai_config, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples), axis=1)
+            elif vllm:
                 test_set["Context_Relevance_Prediction"] = test_set.progress_apply(lambda x: few_shot_context_relevance_scoring_vllm(
                     context_relevance_system_prompt, clean_query(x[query_id]), x["Document"], llm_judge, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples), axis=1)
             elif "gpt" in llm_judge:
@@ -726,7 +813,10 @@ def evaluate_model(params: dict) -> tuple:
                 test_set["Context_Relevance_Prediction"] = test_set.progress_apply(lambda x: few_shot_context_relevance_scoring_togetherai(
                     context_relevance_system_prompt, clean_query(x[query_id]), x["Document"], llm_judge, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples), axis=1)
         elif "Answer_Faithfulness_Label" == label_column:
-            if vllm:
+            if azure_openai_config:
+                test_set["Answer_Faithfulness_Prediction"] = test_set.progress_apply(lambda x: few_shot_answer_faithfulness_scoring_azure(
+                    answer_faithfulness_system_prompt, clean_query(x[query_id]), x["Document"], x["Answer"], azure_openai_config, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples), axis=1)
+            elif vllm:
                 test_set["Answer_Faithfulness_Prediction"] = test_set.progress_apply(lambda x: few_shot_answer_faithfulness_scoring_vllm(
                     answer_faithfulness_system_prompt, clean_query(x[query_id]), x["Document"], x["Answer"], llm_judge, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples), axis=1)
             elif "gpt" in llm_judge:
@@ -739,7 +829,10 @@ def evaluate_model(params: dict) -> tuple:
                 test_set["Answer_Faithfulness_Prediction"] = test_set.progress_apply(lambda x: few_shot_answer_faithfulness_scoring_togetherai(
                     answer_faithfulness_system_prompt, clean_query(x[query_id]), x["Document"], x["Answer"], llm_judge, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples), axis=1)
         elif "Answer_Relevance_Label" == label_column:
-            if vllm:
+            if azure_openai_config:
+                test_set["Answer_Relevance_Prediction"] = test_set.progress_apply(lambda x: few_shot_answer_relevance_scoring_azure(
+                    answer_relevance_system_prompt, clean_query(x[query_id]), x["Document"], x["Answer"], azure_openai_config, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples), axis=1)
+            elif vllm:
                 test_set["Answer_Relevance_Prediction"] = test_set.progress_apply(lambda x: few_shot_answer_relevance_scoring_vllm(
                     answer_relevance_system_prompt, clean_query(x[query_id]), x["Document"], x["Answer"], llm_judge, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples), axis=1)
             elif "gpt" in llm_judge:
@@ -838,7 +931,7 @@ def determine_query_column(machine_labels: pd.DataFrame, few_shot_examples: pd.D
     - few_shot_examples (pd.DataFrame): The DataFrame containing the few shot examples.
 
     Returns:
-    - Tuple[pd.Series, str]: A tuple containing the query series and the query ID.
+    - Tuple[pd.uries, str]: A tuple containing the query series and the query ID.
 
     Raises:
     - SystemExit: If both 'Query' and 'Question' keys are missing for the given row.
@@ -873,7 +966,8 @@ def apply_labeling_functions(
     failed_extraction_count: int, 
     few_shot_examples: pd.DataFrame, 
     machine_label_prompt: str, 
-    label_column: str
+    label_column: str,
+    azure_openai_config: dict
 ) -> None:
     """
     Applies labeling functions to each row in the machine_labels DataFrame.
@@ -891,6 +985,7 @@ def apply_labeling_functions(
     - few_shot_examples (pd.DataFrame): The DataFrame containing few-shot examples.
     - machine_label_prompt (str): The prompt used for machine labeling.
     - label_column (str): The column to store the labels.
+    - azure_openai_config (dict): Necessary information to setup Azure OpenAI model.
 
     Returns:
     - None
@@ -899,7 +994,12 @@ def apply_labeling_functions(
     for index, row in tqdm(machine_labels.iterrows(), total=machine_labels.shape[0], desc="Generating machine labels!"):
         current_query = query.iloc[index]
         
-        if "gpt" in machine_label_llm_model:
+        if azure_openai_config:
+            context_relevance_score = few_shot_context_relevance_scoring_azure(
+                machine_label_prompt, current_query, row['Document'], azure_openai_config, 
+                query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples
+            )
+        elif "gpt" in machine_label_llm_model:
             if vllm:
                 context_relevance_score = few_shot_context_relevance_scoring_vllm(
                     machine_label_prompt, current_query, row['Document'], machine_label_llm_model, 
@@ -932,6 +1032,12 @@ def apply_labeling_functions(
             answer_faithfulness_score = 0
         else:
             if label_column == "Answer_Relevance_Label":
+                if azure_openai_config:
+                    answer_relevance_score = few_shot_answer_relevance_scoring(
+                            machine_label_prompt, current_query, row['Document'], row['Answer'], 
+                            machine_label_llm_model, query_id, debug_mode, request_delay, 
+                            failed_extraction_count, few_shot_examples
+                        )
                 if "gpt" in machine_label_llm_model:
                     if vllm:
                         answer_relevance_score = few_shot_answer_relevance_scoring_vllm(
@@ -1000,7 +1106,8 @@ def generate_machine_labels(
     debug_mode: bool, 
     request_delay: int, 
     label_column: str, 
-    few_shot_examples: list
+    few_shot_examples: list,
+    azure_openai_config: dict
 ) -> None:
     """
     Generates machine labels for the given evaluation set and saves them to a file.
@@ -1016,6 +1123,7 @@ def generate_machine_labels(
     - request_delay (int): Delay between requests to the language model service.
     - label_column (str): The column name for the label to be generated.
     - few_shot_examples (list): List of few-shot examples to be used for generating labels.
+    - azure_openai_config (dict): Dictionary containing information to config Azure model.
 
     Returns:
     - None
@@ -1039,7 +1147,7 @@ def generate_machine_labels(
     apply_labeling_functions(
         machine_labels, query, machine_label_llm_model, query_id, vllm, host_url, 
         debug_mode, request_delay, failed_extraction_count, few_shot_examples, 
-        machine_label_prompt, label_column
+        machine_label_prompt, label_column, azure_openai_config
     )
     
     # Save the updated DataFrame back to the TSV file
@@ -1064,20 +1172,22 @@ def post_process_predictions(params: dict):
     debug_mode = params["debug_mode"]
     request_delay = params["request_delay"]
     few_shot_examples = params["few_shot_examples"]
+    azure_openai_config = params["azure_openai_config"]
 
-    prediction_column = label_column + "_Model_Predictions"
-    test_set[prediction_column] = total_predictions.tolist()
-    
+    prediction_column = label_column + "_ARES_Predictions"
+    test_set[prediction_column] = total_predictions if isinstance(total_predictions, list) else total_predictions.tolist()
+        
     if label_column in test_set.columns:
         test_set = test_set[test_set[label_column].notna()]
         
     for label in labels:
-        if label != label_column and label in test_set.columns:
-            test_set = test_set[test_set[label] != 0]
+        if label in test_set.columns:
+            if label != label_column:
+                test_set = test_set[test_set[label] != 0]
 
     # Generate machine labels if parameters are provided
     if machine_label_path != "None" and machine_label_llm_model != "None":
-        generate_machine_labels(machine_label_path, unlabeled_eval_set, machine_label_prompt, machine_label_llm_model, vllm, host_url, debug_mode, request_delay, label_column, few_shot_examples)
+        generate_machine_labels(machine_label_path, unlabeled_eval_set, machine_label_prompt, machine_label_llm_model, vllm, host_url, debug_mode, request_delay, label_column, few_shot_examples, azure_openai_config)
         Y_labeled_dataset = pd.read_csv(machine_label_path, sep='\t')
         Y_labeled_dataset = Y_labeled_dataset.head(500)
     else:
@@ -1105,6 +1215,7 @@ def post_process_predictions(params: dict):
     return test_set, Y_labeled_dataset, Y_labeled_dataloader, Y_labeled_predictions, Yhat_unlabeled_dataset, prediction_column
 
 def evaluate_and_scoring_data(params: dict):
+    # Extract parameters
     test_set = params["test_set"]
     Y_labeled_predictions = params["Y_labeled_predictions"]
     Y_labeled_dataset = params["Y_labeled_dataset"]
@@ -1136,38 +1247,92 @@ def evaluate_and_scoring_data(params: dict):
     request_delay = params["request_delay"]
     debug_mode = params["debug_mode"]
     prediction_filepath = params["prediction_filepath"]
+    azure_openai_config = params["azure_openai_config"]
     
     failed_extraction_count = {'failed': 0}  # Reset failed extraction count
 
+    from sentence_transformers import SentenceTransformer
+    from transformers import AutoTokenizer
+    from ares.LLM_as_a_Judge_Adaptation.Late_Chunking_Classifier import CustomClassifier, get_late_chunked_embeddings, get_query_embedding
+
     if checkpoint:
         model.eval()
-        with tqdm(Y_labeled_dataloader, desc="Scoring", leave=False) as progress_bar:
-            for batch in progress_bar:
-                with torch.no_grad():
-                    new_batch = {
-                        'ids': batch['input_ids'].to(device),
-                        'mask': batch['attention_mask'].bool().to(device) if model_choice in ["mosaicml/mpt-1b-redpajama-200b"] else batch['attention_mask'].to(device)
-                    }
-                    if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt"]:
-                        new_batch['decoder_input_ids'] = batch['labels'].reshape(batch['labels'].shape[0], 1).to(device)
-                    
-                    outputs = model(**new_batch)
-                    logits = outputs
-                    predictions = torch.argmax(logits, dim=-1)
+        if use_late_chunking:
+            # Load embedding model and tokenizer
+            embedding_model_name = "jinaai/jina-embeddings-v2-base-en"
+            embedding_model = SentenceTransformer(embedding_model_name, device=device, trust_remote_code=True)
+            embedding_model.max_seq_length = 8192
+            tokenizer = AutoTokenizer.from_pretrained(embedding_model_name, trust_remote_code=True)
+            
+            embedding_size = embedding_model.get_sentence_embedding_dimension()
+            input_size = embedding_size * 2
+            num_labels = 2  # Binary classification
+            classifier_model = CustomClassifier(input_size=input_size, num_labels=num_labels, model_choice=model_choice)
+            classifier_model.to(device)
+            classifier_model.load_state_dict(torch.load(checkpoint))
+            classifier_model.eval()
 
-                    if 'labels' in batch:
-                        # Get the labels from the batch
-                        labels = batch['labels'].to(device)
-
-                        # Add the batch to the metric
-                        metric.add_batch(predictions=predictions, references=labels)
-
-                    # Concatenate all predictions for later use
-                    Y_labeled_predictions = torch.cat((Y_labeled_predictions, predictions), 0)
+            Y_labeled_predictions = torch.FloatTensor([]).to(device)
+            with tqdm(Y_labeled_dataset.iterrows(), total=len(Y_labeled_dataset), desc="Scoring", leave=False) as progress_bar:
+                for idx, row in progress_bar:
+                    with torch.no_grad():
+                        query_labeled_id = 'Query' if 'Query' in Y_labeled_dataset.columns else 'Question'
+                        query = row[query_labeled_id]
+                        document = row['Document']
+                        
+                        # Generate embeddings
+                        doc_embedding = get_late_chunked_embeddings(document, embedding_model, tokenizer)
+                        query_embedding = get_query_embedding(query, embedding_model)
+                        combined_embedding = np.concatenate((query_embedding, doc_embedding))
+                        combined_embedding_tensor = torch.tensor(combined_embedding, dtype=torch.float).unsqueeze(0).to(device)
+                        
+                        logits = classifier_model(combined_embedding_tensor)
+                        predictions = torch.argmax(logits, dim=-1)
+                        
+                        if label_column in row:
+                            label = row[label_column]
+                            metric.add_batch(predictions=predictions.cpu(), references=torch.tensor([label]))
+                        
+                        Y_labeled_predictions = torch.cat((Y_labeled_predictions, predictions), 0)
                     progress_bar.update(1)
-                    
-        Y_labeled_dataset[prediction_column] = Y_labeled_predictions.detach().cpu().numpy().tolist()
-        Yhat_unlabeled_dataset = test_set
+
+            Y_labeled_dataset[prediction_column] = Y_labeled_predictions.detach().cpu().numpy().tolist()
+
+            # Compute the metric after all batches are processed
+            results_metric = metric.compute()
+            results['accuracy'] = results_metric.get('accuracy', None)
+
+            Yhat_unlabeled_dataset = test_set
+        else:
+            with tqdm(Y_labeled_dataloader, desc="Scoring", leave=False) as progress_bar:
+                for batch in progress_bar:
+                    with torch.no_grad():
+                        new_batch = {
+                            'ids': batch['input_ids'].to(device),
+                            'mask': batch['attention_mask'].bool().to(device) if model_choice in ["mosaicml/mpt-1b-redpajama-200b"] else batch['attention_mask'].to(device)
+                        }
+                        if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt"]:
+                            new_batch['decoder_input_ids'] = batch['labels'].reshape(batch['labels'].shape[0], 1).to(device)
+
+                        outputs = model(**new_batch)
+
+                        logits = outputs
+                        predictions = torch.argmax(logits, dim=-1)
+
+                        if 'labels' in batch:
+                            labels = batch['labels'].to(device)
+                            metric.add_batch(predictions=predictions, references=labels)
+
+                        Y_labeled_predictions = torch.cat((Y_labeled_predictions, predictions), 0)
+                        progress_bar.update(1)
+                        
+            Y_labeled_dataset[prediction_column] = Y_labeled_predictions.detach().cpu().numpy().tolist()
+            Yhat_unlabeled_dataset = test_set
+
+            # Compute the metric after all batches are processed
+            results_metric = metric.compute()
+            results['accuracy'] = results_metric.get('accuracy', None)
+    
     else:
         if llm_judge == "None":
             sys.exit("Error: No llm_judge provided")
@@ -1185,7 +1350,9 @@ def evaluate_and_scoring_data(params: dict):
                     answer = row["Answer"]
                     
                     if "Context_Relevance_Label" == label_column:
-                        if vllm:
+                        if azure_openai_config:
+                            score = few_shot_context_relevance_scoring_azure(context_relevance_system_prompt, clean_query(query), document, azure_openai_config, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
+                        elif vllm:
                             score = few_shot_context_relevance_scoring_vllm(context_relevance_system_prompt, query, document, model_choice, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples)
                         elif "gpt" in llm_judge:
                             score = few_shot_context_relevance_scoring(context_relevance_system_prompt, clean_query(query), document, model_choice, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
@@ -1195,7 +1362,9 @@ def evaluate_and_scoring_data(params: dict):
                             score = few_shot_context_relevance_scoring_togetherai(context_relevance_system_prompt, clean_query(query), document, model_choice, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
                     
                     elif "Answer_Faithfulness_Label" == label_column:
-                        if vllm:
+                        if azure_openai_config:
+                            score = few_shot_answer_faithfulness_scoring_azure(answer_faithfulness_system_prompt, clean_query(query), document, answer, azure_openai_config, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
+                        elif vllm:
                             score = few_shot_answer_faithfulness_scoring_vllm(answer_faithfulness_system_prompt, query, document, answer, model_choice, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples)
                         elif "gpt" in llm_judge:
                             score = few_shot_answer_faithfulness_scoring(answer_faithfulness_system_prompt, clean_query(query), document, answer, model_choice, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
@@ -1205,7 +1374,9 @@ def evaluate_and_scoring_data(params: dict):
                             score = few_shot_answer_faithfulness_scoring_togetherai(answer_faithfulness_system_prompt, clean_query(query), document, answer, model_choice, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
                     
                     elif "Answer_Relevance_Label" == label_column:
-                        if vllm:
+                        if azure_openai_config:
+                            score = few_shot_answer_relevance_scoring_vllm(answer_relevance_system_prompt, query, document, answer, azure_openai_config, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples)
+                        elif vllm:
                             score = few_shot_answer_relevance_scoring_vllm(answer_relevance_system_prompt, query, document, answer, model_choice, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples)
                         elif "gpt" in llm_judge:
                             score = few_shot_answer_relevance_scoring(answer_relevance_system_prompt, clean_query(query), document, answer, model_choice, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
@@ -1216,10 +1387,11 @@ def evaluate_and_scoring_data(params: dict):
                     
                     Y_labeled_predictions.append(score)
                     progress_bar.update(1)
-            
+        
             Y_labeled_predictions_np = np.array(Y_labeled_predictions)
             Y_labeled_dataset[prediction_column] = Y_labeled_predictions_np.tolist()
         else:
+            # Similar handling for other LLM judges
             Y_labeled_predictions = []
 
             query_id = "Query" if 'Query' in few_shot_examples.columns else "Question"
@@ -1232,94 +1404,120 @@ def evaluate_and_scoring_data(params: dict):
                     answer = row["Answer"]
                     
                     if "Context_Relevance_Label" == label_column:
-                        if vllm:
+                        if azure_openai_config:
+                            score = few_shot_context_relevance_scoring_azure(context_relevance_system_prompt, clean_query(query), document, azure_openai_config, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
+                        elif vllm:
                             score = few_shot_context_relevance_scoring_vllm(context_relevance_system_prompt, query, document, model_choice, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples)
                         else:
                             score = few_shot_context_relevance_scoring_togetherai(context_relevance_system_prompt, clean_query(query), document, model_choice, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
                     
                     elif "Answer_Faithfulness_Label" == label_column:
-                        if vllm:
+                        if azure_openai_config:
+                            score = few_shot_answer_faithfulness_scoring_azure(answer_faithfulness_system_prompt, clean_query(query), document, answer, azure_openai_config, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
+                        elif vllm:
                             score = few_shot_answer_faithfulness_scoring_vllm(answer_faithfulness_system_prompt, query, document, answer, model_choice, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples)
                         else:
                             score = few_shot_answer_faithfulness_scoring_togetherai(answer_faithfulness_system_prompt, clean_query(query), document, answer, model_choice, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
                     
                     elif "Answer_Relevance_Label" == label_column:
-                        if vllm:
+                        if azure_openai_config:
+                            score = few_shot_answer_relevance_scoring_azure(answer_relevance_system_prompt, clean_query(query), document, answer, azure_openai_config, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
+                        elif vllm:
                             score = few_shot_answer_relevance_scoring_vllm(answer_relevance_system_prompt, query, document, answer, model_choice, query_id, debug_mode, host_url, request_delay, failed_extraction_count, few_shot_examples)
                         else:
                             score = few_shot_answer_relevance_scoring_togetherai(answer_relevance_system_prompt, clean_query(query), document, answer, model_choice, query_id, debug_mode, request_delay, failed_extraction_count, few_shot_examples)
                     
                     Y_labeled_predictions.append(score)
                     progress_bar.update(1)
-            
+        
             Y_labeled_predictions_np = np.array(Y_labeled_predictions)
             Y_labeled_dataset[prediction_column] = Y_labeled_predictions_np.tolist()
 
+    # Convert predictions and labels to integer type
     Y_labeled = Y_labeled_dataset[label_column].values.astype(int)
     Yhat_labeled = Y_labeled_dataset[prediction_column].values.astype(int)
     Yhat_unlabeled = Yhat_unlabeled_dataset[prediction_column].values.astype(int)
     
+    # Debugging: Print a sample of the ground truth and predictions
+    print("Sample Ground Truth Labels:", Y_labeled[:10])
+    print("Sample LLM Judge Predictions:", Yhat_labeled[:10])
+    
+    # Calculate PPI metrics
     avg_ci, avg_ci_classical, ci_imputed = calculate_ppi(Y_labeled, Yhat_labeled, Yhat_unlabeled, alpha, num_trials)
-    LLM_judge_prediction = sum(avg_ci) / len(avg_ci)
-    LLM_judge_ratio_predictions.append(LLM_judge_prediction)
+    
+    # Calculate accuracy separately
+    if len(Y_labeled) > 0:
+        accuracy = (Y_labeled == Yhat_labeled).mean()
+    else:
+        accuracy = None
+    
+    # Debugging: Print the calculated accuracy
+    print("Calculated Accuracy:", accuracy)
+    
+    # Update metrics lists
+    LLM_judge_ratio_predictions.append(avg_ci.mean())
     validation_set_lengths.append(len(test_set))
     ppi_confidence_intervals.append([round(value, 3) for value in avg_ci])
-
-    # Check if the ground truth label column exists and has any non-null values
+    accuracy_scores.append(round(accuracy, 3) if accuracy is not None else None)
+    
+    # Compute Ground Truth Performance
+    ground_truth_available = False
     if label_column in Yhat_unlabeled_dataset.columns and not Yhat_unlabeled_dataset[label_column].isnull().all():
-        validation_set_ratios.append(round(Yhat_unlabeled_dataset[label_column].tolist().count(1) / len(Yhat_unlabeled_dataset), 3))
-        accuracy_scores.append(round(results['accuracy'], 3))
+        ground_truth_performance = round(Yhat_unlabeled_dataset[label_column].tolist().count(1) / len(Yhat_unlabeled_dataset), 3)
+        validation_set_ratios.append(ground_truth_performance)
         ground_truth_available = True
     else:
-        ground_truth_available = False
-
+        validation_set_ratios.append(None)
+    
+    # Build the results dictionary
     results = {
         "Label_Column": label_column,
         "Evaluation_Set": test_set_selection,
         "ARES_Prediction": LLM_judge_ratio_predictions[-1] if LLM_judge_ratio_predictions else None,
         "ARES_Confidence_Interval": ppi_confidence_intervals[-1] if ppi_confidence_intervals else None,
         "Number_of_Examples_in_Evaluation_Set": validation_set_lengths[-1] if validation_set_lengths else None,
-        "Ground_Truth_Performance": validation_set_ratios[-1] if ground_truth_available and validation_set_ratios else None,
-        "ARES_LLM_Judge_Accuracy_on_Ground_Truth_Labels": accuracy_scores[-1] if ground_truth_available and accuracy_scores else None,
+        "Ground_Truth_Performance": validation_set_ratios[-1],
+        "ARES_LLM_Judge_Accuracy_on_Ground_Truth_Labels": accuracy_scores[-1],
         "Annotated_Examples_used_for_PPI": len(Y_labeled)
     }
+    
     # Save the labeled dataset with predictions to a new TSV file
     if prediction_filepath != "None": 
         # Update the prediction column name based on the label column
-        if label_column == "Context_Relevance_Label":
-            prediction_column_name = "ARES_Context_Relevance_Prediction"
-        elif label_column == "Answer_Relevance_Label":
-            prediction_column_name = "ARES_Answer_Relevance_Prediction"
-        elif label_column == "Answer_Faithfulness_Label":
-            prediction_column_name = "ARES_Answer_Faithfulness_Prediction"
-        elif label_column == "Language_Consistency_Label":
-            prediction_column_name = "ARES_Language_Consistency_Prediction"
+        prediction_column_mapping = {
+            "Context_Relevance_Label": "ARES_Context_Relevance_Prediction",
+            "Answer_Relevance_Label": "ARES_Answer_Relevance_Prediction",
+            "Answer_Faithfulness_Label": "ARES_Answer_Faithfulness_Prediction"
+            "Language_Consistency_Label": "ARES_Language_Consistency_Prediction"
+        }
+        prediction_column_name = prediction_column_mapping.get(label_column, prediction_column)
 
         if os.path.exists(prediction_filepath):
             existing_predictions = pd.read_csv(prediction_filepath, sep="\t")
             existing_predictions[prediction_column_name] = Yhat_unlabeled_dataset[prediction_column].values
         else:
             existing_predictions = Yhat_unlabeled_dataset
-            Yhat_unlabeled_dataset.rename(columns={prediction_column: prediction_column_name}, inplace=True)
+            existing_predictions.rename(columns={prediction_column: prediction_column_name}, inplace=True)
 
         existing_predictions.to_csv(prediction_filepath, sep='\t', index=False)
         print("--------------------------------------------------")
         print(f"Labeled dataset with predictions saved to {prediction_filepath}")
         print("--------------------------------------------------")
 
+    # Print the results
     print("--------------------------------------------------")
-    print(label_column + " Scoring")
+    print(f"{label_column} Scoring")
     print("ARES Ranking")
-    print("Evaluation_Set:" +str(test_set_selection))
-    print("Checkpoint:" +str(checkpoint))
-    print("ARES Prediction: " + str(LLM_judge_ratio_predictions))
-    print("ARES Confidence Interval: " + str(ppi_confidence_intervals))
-    print("Number of Examples in Evaluation Set: " + str(validation_set_lengths))
+    print(f"Evaluation_Set: {test_set_selection}")
+    print(f"Checkpoint: {checkpoint}")
+    print(f"ARES Prediction: {LLM_judge_ratio_predictions[-1] if LLM_judge_ratio_predictions else None}")
+    print(f"ARES Confidence Interval: {ppi_confidence_intervals[-1] if ppi_confidence_intervals else None}")
+    print(f"Number of Examples in Evaluation Set: {validation_set_lengths[-1] if validation_set_lengths else None}")
     if ground_truth_available:
-        print("Ground Truth Performance: " + str(validation_set_ratios))
-    if ground_truth_available:
-        print("ARES LLM Judge Accuracy on Ground Truth Labels: " + str(accuracy_scores))
-    print("Annotated Examples used for PPI: " + str(len(Y_labeled)))
+        print(f"Ground Truth Performance: {validation_set_ratios[-1]}")
+    if accuracy_scores[-1] is not None:
+        print(f"ARES LLM Judge Accuracy on Ground Truth Labels: {accuracy_scores[-1]}")
+    print(f"Annotated Examples used for PPI: {len(Y_labeled)}")
     print("--------------------------------------------------\n")
 
     return results

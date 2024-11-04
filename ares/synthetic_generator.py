@@ -2,7 +2,7 @@ from .LLM_as_a_Judge_Adaptation.Generate_Synthetic_Queries_and_Answers import (
     load_model,
     load_documents,
     load_few_shot_prompt,
-    generate_contradictory_answers,
+    # generate_contradictory_answers,
     generate_few_shot_prompts,
     generate_wrong_language_few_shot_prompts,
     generate_synthetic_queries,
@@ -10,12 +10,16 @@ from .LLM_as_a_Judge_Adaptation.Generate_Synthetic_Queries_and_Answers import (
     generate_synthetic_data
 )
 
+import os
+
 def synthetic_generator_config(
     document_filepaths: list, 
-    few_shot_prompt_filename: str,
+    few_shot_prompt_filenames: list,
     synthetic_queries_filenames: list, 
     documents_sampled: int,
     model_choice: str = "google/flan-t5-xxl", 
+    vllm: bool = False,
+    host_url: str = "http://0.0.0.0:8000/v1",
     api_model: bool = False,
     clean_documents: bool = False,
     regenerate_synth_questions: bool = True, 
@@ -40,6 +44,7 @@ def synthetic_generator_config(
         "Create an answer for the given question that contradicts the provided document. "
         "You should create false information that disagrees with what exists within the content of the document.\n\n"
     ),
+    azure_openai_config: dict = None,
     document_language: str = "English",
     query_language: str = "English",
     second_language: str = None
@@ -49,7 +54,7 @@ def synthetic_generator_config(
 
     Args:
         document_filepaths (list): List of file paths to the documents.
-        few_shot_prompt_filename (str): Filename for the few-shot prompt.
+        few_shot_prompt_filenames (list): List of filenames for the few-shot prompts.
         synthetic_queries_filenames (list): List of filenames for the synthetic queries.
         documents_sampled (int): Number of documents to sample.
         model_choice (str, optional): Model choice for the generation. Defaults to "google/flan-t5-xxl".
@@ -65,21 +70,22 @@ def synthetic_generator_config(
         number_of_positives_added_ratio (float, optional): Ratio of positives to add. Defaults to 0.0.
         regenerate_embeddings (float, optional): Whether to regenerate embeddings. Defaults to True.
         synthetic_query_prompt (str, optional): Prompt for synthetic query generation. Defaults to a predefined string.
+        azure_openai_config (dict, optional): Contains information to configure OpenAI Azure model
 
     Raises:
-        ValueError: If the lengths of document_filepaths and synthetic_queries_filenames do not match.
+        ValueError: If the lengths of document_filepaths, few_shot_prompt_filenames, and synthetic_queries_filenames do not match.
     """
     
     print("=" * 40)
     print("Saving synthetic queries to: ", synthetic_queries_filenames)
     print("=" * 40)
     
-    model, tokenizer, device = load_model(model_choice, api_model)
+    model, tokenizer, device = load_model(model_choice, api_model, vllm)
 
-    if len(document_filepaths) != len(synthetic_queries_filenames):
-        raise ValueError("document_filepaths and synthetic_queries_filenames lists must be of the same length.")
+    if not (len(document_filepaths) == len(few_shot_prompt_filenames) == len(synthetic_queries_filenames)):
+        raise ValueError("document_filepaths, few_shot_prompt_filenames, and synthetic_queries_filenames lists must be of the same length.")
 
-    for document_filepath, synthetic_queries_filename in zip(document_filepaths, synthetic_queries_filenames):
+    for document_filepath, few_shot_prompt_filename, synthetic_queries_filename in zip(document_filepaths, few_shot_prompt_filenames, synthetic_queries_filenames):
         for_fever_dataset = "fever" in document_filepath.lower()
         for_wow_dataset = "wow" in document_filepath.lower()
 
@@ -101,9 +107,9 @@ def synthetic_generator_config(
             few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
         )
 
-        few_shot_examples_for_contradictory_answers = generate_contradictory_answers(
-            few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
-        )
+        # few_shot_examples_for_contradictory_answers = generate_contradictory_answers(
+        #     few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
+        # )
 
         answer_gen_few_shot_examples, length_of_fewshot_prompt_answer_gen = generate_few_shot_prompts(
             few_shot_prompt_filename, for_fever_dataset, for_wow_dataset, document_language, query_language
@@ -119,6 +125,8 @@ def synthetic_generator_config(
         #     'device': device,
         #     'tokenizer': tokenizer,
         #     'model': model,
+        #     "vllm": vllm,
+        #     "host_url": host_url,
         #     'api_model': api_model,
         #     'model_choice': model_choice,
         #     'percentiles': percentiles,

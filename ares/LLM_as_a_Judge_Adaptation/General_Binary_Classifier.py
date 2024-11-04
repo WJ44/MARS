@@ -1,3 +1,5 @@
+# General_binary_classifier.py
+
 import os
 import re
 import ast
@@ -28,9 +30,10 @@ from tqdm.auto import tqdm
 from transformers import (
     PreTrainedTokenizer, T5Tokenizer, T5EncoderModel, T5ForConditionalGeneration,
     BertModel, AutoTokenizer, AutoModel, GPT2Tokenizer,
-    TrainingArguments, Trainer, get_scheduler,
+    TrainingArguments, get_scheduler,
     AutoModelForCausalLM, AutoConfig, AutoModelForSequenceClassification
 )
+
 import datasets
 from datasets import load_metric
 
@@ -185,7 +188,18 @@ class CustomBERTModel(nn.Module):
             model_encoding = AutoModel.from_pretrained(model_choice)
             embedding_size = 1536
             self.encoderModel = model_encoding
-
+            
+        elif "electra" in model_choice.lower():
+            config = AutoConfig.from_pretrained(model_choice)
+            model_encoding = AutoModel.from_pretrained(model_choice)
+            embedding_size = config.hidden_size
+            self.encoderModel = model_encoding
+        
+        elif model_choice in ["meta-llama/Meta-Llama-3-70B"]: 
+            model_encoding = AutoModelForCausalLM.from_pretrained(model_choice) 
+            embedding_size = 8192
+            self.encoderModel = model_encoding
+            
         elif model_choice in ["microsoft/deberta-v3-xsmall"]:
             model_encoding = AutoModel.from_pretrained(model_choice)
             embedding_size = 384
@@ -224,6 +238,12 @@ class CustomBERTModel(nn.Module):
             # Perform a forward pass for the specified models
             total_output = self.encoderModel(input_ids=ids, attention_mask=mask)
             return total_output['logits']
+
+        elif "electra" in self.model_choice.lower():
+            outputs = self.encoderModel(input_ids=ids, attention_mask=mask)
+            pooled_output = outputs.last_hidden_state[:, 0]
+            logits = self.classifier(pooled_output)
+            return logits
         else:
             # Perform a forward pass for other models
             total_output = self.encoderModel(ids, attention_mask=mask)
@@ -293,7 +313,8 @@ def load_model(model_choice: str) -> tuple[AutoTokenizer, int]:
            - tokenizer (AutoTokenizer): The tokenizer loaded from the specified model.
            - max_token_length (int): The maximum token length set for the tokenizer.
     """
-    max_token_length = 2048
+    # max_token_length = 2048
+    max_token_length = 512 if "electra" in model_choice.lower() else 2048
     tokenizer = AutoTokenizer.from_pretrained(model_choice, model_max_length=max_token_length)
     
     return tokenizer, max_token_length
@@ -305,16 +326,12 @@ def prepare_and_clean_data(params: dict) -> tuple[str, int]:
     Parameters:
     params (dict): A dictionary containing the following keys:
         - "training_dataset_path" (str): Path to the training dataset.
-        - "learning_rate_choices" (list): List of possible learning rates.
         - "chosen_learning_rate" (float): The chosen learning rate for the model.
         - "model_choice" (str): The model identifier.
-        - "number_of_runs" (int): Number of runs for the training.
-        - "validation_set_scoring" (str): Scoring method for the validation set.
         - "label" (str): The label column name in the dataset.
         - "validation_dataset_path" (str): Path to the validation dataset.
         - "patience_value" (int): Patience value for early stopping.
         - "num_epochs" (int): Number of epochs for training.
-        - "num_warmup_steps" (int): Number of warmup steps for the learning rate scheduler.
         - "gradient_accumulation_multiplier" (int): Multiplier for gradient accumulation.
         - "assigned_batch_size" (int): Batch size assigned for training.
         - "tokenizer" (AutoTokenizer): Tokenizer to be used.
@@ -326,16 +343,12 @@ def prepare_and_clean_data(params: dict) -> tuple[str, int]:
     """
     # Extract parameters from the dictionary
     dataset = params["training_dataset_path"]
-    learning_rate_choices = params["learning_rate_choices"]
     chosen_learning_rate = params["chosen_learning_rate"]
     model_choice = params["model_choice"]
-    number_of_runs = params["number_of_runs"]
-    validation_set_scoring = params["validation_set_scoring"]
     label_column = params["label"]
     validation_set = params["validation_dataset_path"]
     patience_value = params["patience_value"]
     num_epochs = params["num_epochs"]
-    num_warmup_steps = params["num_warmup_steps"]
     gradient_accumulation_multiplier = params["gradient_accumulation_multiplier"]
     assigned_batch_size = params["assigned_batch_size"]
     tokenizer = params["tokenizer"]
@@ -371,13 +384,10 @@ def prepare_and_clean_data(params: dict) -> tuple[str, int]:
     print("Dataset: " + dataset)
     print("Model: " + model_choice)
     print("Test Set Selection: " + validation_set)
-    print("Number of Runs: " + str(number_of_runs))
     print('Learning Rate: ' + str(chosen_learning_rate))
     print("Checkpoint Path: " + checkpoint_path)
     print("Patience: " + str(patience_value))
-    print("Validation Set Choice: " + str(validation_set_scoring))
     print("Number of Epochs: " + str(num_epochs))
-    print("Number of warmup steps: " + str(num_warmup_steps))
     print("--------------------------------------------------------------------------")
 
     return checkpoint_path, patience_value
@@ -408,14 +418,16 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
 
     # Print initial count
     print(f"Initial count: {len(synth_queries)}")
+    print(f"Context_Relevance_Label counts before ANY filtering: Yes - {synth_queries[synth_queries['Context_Relevance_Label'] == 'Yes'].shape[0]}, No - {synth_queries[synth_queries['Context_Relevance_Label'] == 'No'].shape[0]}")
 
     # Filter out rows with NaN values in the specified columns
     synth_queries = synth_queries[synth_queries[label_column] != "NaN"]
     synth_queries = synth_queries[synth_queries["synthetic_query"].notna()]
     synth_queries = synth_queries[synth_queries["document"].notna()]
+    synth_queries = synth_queries[synth_queries[label_column].notna()]
+
     if "Context" not in label_column:
         synth_queries = synth_queries[synth_queries['generated_answer'].notna()]
-    synth_queries = synth_queries[synth_queries[label_column].notna()]
 
     # Print count after initial filtering
     print(f"Count after initial filtering: {len(synth_queries)}")
@@ -435,6 +447,11 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
 
         # Print the count before filtering duplicates
         print(f"Count before filtering duplicates for context relevance: {len(synth_queries)}")
+
+        # Count and print Yes and No labels before filtering
+        yes_count = synth_queries[synth_queries[label_column] == 'Yes'].shape[0]
+        no_count = synth_queries[synth_queries[label_column] == 'No'].shape[0]
+        print(f"CR - Before filtering - Yes: {yes_count}, No: {no_count}")
 
         # Temporarily remove rows with duplicate query/document pairs for context relevance
         synth_queries = synth_queries.drop_duplicates(subset=["synthetic_query", "document"])
@@ -466,7 +483,7 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
         print(f"Count before filtering duplicades for {label_column}: {len(synth_queries)}")
 
 
-        # Temporarily remove rows whit duplicate query/document/answer pairs for context relevance
+        # Temporarily remove rows whit duplicate query/document/answer pairs
         synth_queries = synth_queries.drop_duplicates(subset=["synthetic_query", "document", "generated_answer"])
 
         # Print the count after filtering
@@ -644,7 +661,7 @@ test_set: pd.DataFrame, label_column: str) -> tuple[list[str], list[int], list[s
 
     return train_set_text, train_set_label, dev_set_text, dev_set_label, test_set_text, test_set_label, labels_list
 
-    ############################################################
+############################################################
 
 def prepare_dataset(validation_set_scoring: bool, 
                     train_set_label: list[int], 
@@ -953,7 +970,7 @@ device: torch.device, eval_dataloader: DataLoader, inference_times: list) -> tup
 
     return total_predictions, total_references, metric
 
-        ############################################################
+############################################################
 
 def print_and_save_model(total_predictions: torch.Tensor, total_references: torch.Tensor, checkpoint_path: str, metric) -> None:
     """

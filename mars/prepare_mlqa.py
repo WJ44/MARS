@@ -12,7 +12,7 @@ random.seed(42)
 
 SPLIT = "dev" # Choose between "dev" and "test"
 
-LANGS = ["en", "ar"]
+LANGS = ["en", "de"]
 
 # Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"

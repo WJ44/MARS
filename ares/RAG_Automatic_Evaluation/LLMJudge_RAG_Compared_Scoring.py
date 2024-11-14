@@ -696,59 +696,59 @@ def evaluate_model(params: dict) -> tuple:
     metric = evaluate.load("accuracy")
 
     if checkpoint:
-        if use_late_chunking:
-            from sentence_transformers import SentenceTransformer
-            from transformers import AutoTokenizer
-            from ares.LLM_as_a_Judge_Adaptation.Late_Chunking_Classifier import SBERTBinaryClassifier, get_late_chunked_embeddings, get_query_embedding
+        # if use_late_chunking:
+        #     from sentence_transformers import SentenceTransformer
+        #     from transformers import AutoTokenizer
+        #     from ares.LLM_as_a_Judge_Adaptation.Late_Chunking_Classifier import SBERTBinaryClassifier, get_late_chunked_embeddings, get_query_embedding
             
-            # Load embedding model and tokenizer
-            embedding_model_name = "jinaai/jina-embeddings-v2-base-en"
-            embedding_model = SentenceTransformer(embedding_model_name, device=device, trust_remote_code=True)
-            embedding_model.max_seq_length = 8192
-            tokenizer = AutoTokenizer.from_pretrained(embedding_model_name, trust_remote_code=True)
+        #     # Load embedding model and tokenizer
+        #     embedding_model_name = "jinaai/jina-embeddings-v2-base-en"
+        #     embedding_model = SentenceTransformer(embedding_model_name, device=device, trust_remote_code=True)
+        #     embedding_model.max_seq_length = 8192
+        #     tokenizer = AutoTokenizer.from_pretrained(embedding_model_name, trust_remote_code=True)
             
-            # Load trained classifier
-            embedding_size = embedding_model.get_sentence_embedding_dimension()
-            input_size = embedding_size * 2
-            num_labels = 2  # Binary classification
-            classifier_model = SBERTBinaryClassifier(embedding_dim=embedding_size)
-            classifier_model.to(device)
-            classifier_model.load_state_dict(torch.load(checkpoint))
-            classifier_model.eval()
+        #     # Load trained classifier
+        #     embedding_size = embedding_model.get_sentence_embedding_dimension()
+        #     input_size = embedding_size * 2
+        #     num_labels = 2  # Binary classification
+        #     classifier_model = SBERTBinaryClassifier(embedding_dim=embedding_size)
+        #     classifier_model.to(device)
+        #     classifier_model.load_state_dict(torch.load(checkpoint))
+        #     classifier_model.eval()
 
-            total_predictions = []
-            total_references = []
-            with tqdm(total=len(test_set), desc="Evaluating with late chunking", leave=False) as progress_bar:
-                for index, row in test_set.iterrows():
-                    query = row['Query']
-                    document = row['Document']
-                    label = row.get(label_column, None)
+        #     total_predictions = []
+        #     total_references = []
+        #     with tqdm(total=len(test_set), desc="Evaluating with late chunking", leave=False) as progress_bar:
+        #         for index, row in test_set.iterrows():
+        #             query = row['Query']
+        #             document = row['Document']
+        #             label = row.get(label_column, None)
                     
-                    # Generate embeddings
-                    doc_embedding = get_late_chunked_embeddings(document, embedding_model, tokenizer)
-                    query_embedding = get_query_embedding(query, embedding_model)
+        #             # Generate embeddings
+        #             doc_embedding = get_late_chunked_embeddings(document, embedding_model, tokenizer)
+        #             query_embedding = get_query_embedding(query, embedding_model)
                     
-                    # Convert to tensors and move to device
-                    doc_embedding_tensor = torch.tensor(doc_embedding, dtype=torch.float).unsqueeze(0).to(device)
-                    query_embedding_tensor = torch.tensor(query_embedding, dtype=torch.float).unsqueeze(0).to(device)
+        #             # Convert to tensors and move to device
+        #             doc_embedding_tensor = torch.tensor(doc_embedding, dtype=torch.float).unsqueeze(0).to(device)
+        #             query_embedding_tensor = torch.tensor(query_embedding, dtype=torch.float).unsqueeze(0).to(device)
                     
-                    # Get prediction from classifier
-                    with torch.no_grad():
-                        logits = classifier_model(doc_embedding_tensor, query_embedding_tensor)
-                        prediction = torch.argmax(logits, dim=-1).item()
+        #             # Get prediction from classifier
+        #             with torch.no_grad():
+        #                 logits = classifier_model(doc_embedding_tensor, query_embedding_tensor)
+        #                 prediction = torch.argmax(logits, dim=-1).item()
                     
-                    total_predictions.append(prediction)
-                    if label is not None:
-                        total_references.append(int(label))
-                    progress_bar.update(1)
-            # Compute results if labels are available
-            if total_references:
-                results = metric.compute(references=total_references, predictions=total_predictions)
-            else:
-                results = None
+        #             total_predictions.append(prediction)
+        #             if label is not None:
+        #                 total_references.append(int(label))
+        #             progress_bar.update(1)
+        #     # Compute results if labels are available
+        #     if total_references:
+        #         results = metric.compute(references=total_references, predictions=total_predictions)
+        #     else:
+        #         results = None
             
-            return total_predictions, total_references, results, metric
-        else: 
+        #     return total_predictions, total_references, results, metric
+        # else: 
             total_predictions = torch.FloatTensor([]).to(device)
             total_references = torch.FloatTensor([]).to(device)
             total_logits = torch.FloatTensor([]).to(device)
@@ -1253,85 +1253,85 @@ def evaluate_and_scoring_data(params: dict):
 
     from sentence_transformers import SentenceTransformer
     from transformers import AutoTokenizer
-    from ares.LLM_as_a_Judge_Adaptation.Late_Chunking_Classifier import CustomClassifier, get_late_chunked_embeddings, get_query_embedding
+    # from ares.LLM_as_a_Judge_Adaptation.Late_Chunking_Classifier import CustomClassifier, get_late_chunked_embeddings, get_query_embedding
 
     if checkpoint:
         model.eval()
-        if use_late_chunking:
-            # Load embedding model and tokenizer
-            embedding_model_name = "jinaai/jina-embeddings-v2-base-en"
-            embedding_model = SentenceTransformer(embedding_model_name, device=device, trust_remote_code=True)
-            embedding_model.max_seq_length = 8192
-            tokenizer = AutoTokenizer.from_pretrained(embedding_model_name, trust_remote_code=True)
+        # if use_late_chunking:
+        #     # Load embedding model and tokenizer
+        #     embedding_model_name = "jinaai/jina-embeddings-v2-base-en"
+        #     embedding_model = SentenceTransformer(embedding_model_name, device=device, trust_remote_code=True)
+        #     embedding_model.max_seq_length = 8192
+        #     tokenizer = AutoTokenizer.from_pretrained(embedding_model_name, trust_remote_code=True)
             
-            embedding_size = embedding_model.get_sentence_embedding_dimension()
-            input_size = embedding_size * 2
-            num_labels = 2  # Binary classification
-            classifier_model = CustomClassifier(input_size=input_size, num_labels=num_labels, model_choice=model_choice)
-            classifier_model.to(device)
-            classifier_model.load_state_dict(torch.load(checkpoint))
-            classifier_model.eval()
+        #     embedding_size = embedding_model.get_sentence_embedding_dimension()
+        #     input_size = embedding_size * 2
+        #     num_labels = 2  # Binary classification
+        #     classifier_model = CustomClassifier(input_size=input_size, num_labels=num_labels, model_choice=model_choice)
+        #     classifier_model.to(device)
+        #     classifier_model.load_state_dict(torch.load(checkpoint))
+        #     classifier_model.eval()
 
-            Y_labeled_predictions = torch.FloatTensor([]).to(device)
-            with tqdm(Y_labeled_dataset.iterrows(), total=len(Y_labeled_dataset), desc="Scoring", leave=False) as progress_bar:
-                for idx, row in progress_bar:
-                    with torch.no_grad():
-                        query_labeled_id = 'Query' if 'Query' in Y_labeled_dataset.columns else 'Question'
-                        query = row[query_labeled_id]
-                        document = row['Document']
+        #     Y_labeled_predictions = torch.FloatTensor([]).to(device)
+        #     with tqdm(Y_labeled_dataset.iterrows(), total=len(Y_labeled_dataset), desc="Scoring", leave=False) as progress_bar:
+        #         for idx, row in progress_bar:
+        #             with torch.no_grad():
+        #                 query_labeled_id = 'Query' if 'Query' in Y_labeled_dataset.columns else 'Question'
+        #                 query = row[query_labeled_id]
+        #                 document = row['Document']
                         
-                        # Generate embeddings
-                        doc_embedding = get_late_chunked_embeddings(document, embedding_model, tokenizer)
-                        query_embedding = get_query_embedding(query, embedding_model)
-                        combined_embedding = np.concatenate((query_embedding, doc_embedding))
-                        combined_embedding_tensor = torch.tensor(combined_embedding, dtype=torch.float).unsqueeze(0).to(device)
+        #                 # Generate embeddings
+        #                 doc_embedding = get_late_chunked_embeddings(document, embedding_model, tokenizer)
+        #                 query_embedding = get_query_embedding(query, embedding_model)
+        #                 combined_embedding = np.concatenate((query_embedding, doc_embedding))
+        #                 combined_embedding_tensor = torch.tensor(combined_embedding, dtype=torch.float).unsqueeze(0).to(device)
                         
-                        logits = classifier_model(combined_embedding_tensor)
-                        predictions = torch.argmax(logits, dim=-1)
+        #                 logits = classifier_model(combined_embedding_tensor)
+        #                 predictions = torch.argmax(logits, dim=-1)
                         
-                        if label_column in row:
-                            label = row[label_column]
-                            metric.add_batch(predictions=predictions.cpu(), references=torch.tensor([label]))
+        #                 if label_column in row:
+        #                     label = row[label_column]
+        #                     metric.add_batch(predictions=predictions.cpu(), references=torch.tensor([label]))
                         
-                        Y_labeled_predictions = torch.cat((Y_labeled_predictions, predictions), 0)
+        #                 Y_labeled_predictions = torch.cat((Y_labeled_predictions, predictions), 0)
+        #             progress_bar.update(1)
+
+        #     Y_labeled_dataset[prediction_column] = Y_labeled_predictions.detach().cpu().numpy().tolist()
+
+        #     # Compute the metric after all batches are processed
+        #     results_metric = metric.compute()
+        #     results['accuracy'] = results_metric.get('accuracy', None)
+
+        #     Yhat_unlabeled_dataset = test_set
+        # else:
+        with tqdm(Y_labeled_dataloader, desc="Scoring", leave=False) as progress_bar:
+            for batch in progress_bar:
+                with torch.no_grad():
+                    new_batch = {
+                        'ids': batch['input_ids'].to(device),
+                        'mask': batch['attention_mask'].bool().to(device) if model_choice in ["mosaicml/mpt-1b-redpajama-200b"] else batch['attention_mask'].to(device)
+                    }
+                    if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt"]:
+                        new_batch['decoder_input_ids'] = batch['labels'].reshape(batch['labels'].shape[0], 1).to(device)
+
+                    outputs = model(**new_batch)
+
+                    logits = outputs
+                    predictions = torch.argmax(logits, dim=-1)
+
+                    if 'labels' in batch:
+                        labels = batch['labels'].to(device)
+                        metric.add_batch(predictions=predictions, references=labels)
+
+                    Y_labeled_predictions = torch.cat((Y_labeled_predictions, predictions), 0)
                     progress_bar.update(1)
+                    
+        Y_labeled_dataset[prediction_column] = Y_labeled_predictions.detach().cpu().numpy().tolist()
+        Yhat_unlabeled_dataset = test_set
 
-            Y_labeled_dataset[prediction_column] = Y_labeled_predictions.detach().cpu().numpy().tolist()
-
-            # Compute the metric after all batches are processed
-            results_metric = metric.compute()
-            results['accuracy'] = results_metric.get('accuracy', None)
-
-            Yhat_unlabeled_dataset = test_set
-        else:
-            with tqdm(Y_labeled_dataloader, desc="Scoring", leave=False) as progress_bar:
-                for batch in progress_bar:
-                    with torch.no_grad():
-                        new_batch = {
-                            'ids': batch['input_ids'].to(device),
-                            'mask': batch['attention_mask'].bool().to(device) if model_choice in ["mosaicml/mpt-1b-redpajama-200b"] else batch['attention_mask'].to(device)
-                        }
-                        if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt"]:
-                            new_batch['decoder_input_ids'] = batch['labels'].reshape(batch['labels'].shape[0], 1).to(device)
-
-                        outputs = model(**new_batch)
-
-                        logits = outputs
-                        predictions = torch.argmax(logits, dim=-1)
-
-                        if 'labels' in batch:
-                            labels = batch['labels'].to(device)
-                            metric.add_batch(predictions=predictions, references=labels)
-
-                        Y_labeled_predictions = torch.cat((Y_labeled_predictions, predictions), 0)
-                        progress_bar.update(1)
-                        
-            Y_labeled_dataset[prediction_column] = Y_labeled_predictions.detach().cpu().numpy().tolist()
-            Yhat_unlabeled_dataset = test_set
-
-            # Compute the metric after all batches are processed
-            results_metric = metric.compute()
-            results['accuracy'] = results_metric.get('accuracy', None)
+        # Compute the metric after all batches are processed
+        results_metric = metric.compute()
+        results['accuracy'] = results_metric.get('accuracy', None)
     
     else:
         if llm_judge == "None":
@@ -1445,20 +1445,10 @@ def evaluate_and_scoring_data(params: dict):
     # Calculate PPI metrics
     avg_ci, avg_ci_classical, ci_imputed = calculate_ppi(Y_labeled, Yhat_labeled, Yhat_unlabeled, alpha, num_trials)
     
-    # Calculate accuracy separately
-    if len(Y_labeled) > 0:
-        accuracy = (Y_labeled == Yhat_labeled).mean()
-    else:
-        accuracy = None
-    
-    # Debugging: Print the calculated accuracy
-    print("Calculated Accuracy:", accuracy)
-    
     # Update metrics lists
-    LLM_judge_ratio_predictions.append(avg_ci.mean())
+    LLM_judge_ratio_predictions.append(sum(avg_ci) / len(avg_ci))
     validation_set_lengths.append(len(test_set))
     ppi_confidence_intervals.append([round(value, 3) for value in avg_ci])
-    accuracy_scores.append(round(accuracy, 3) if accuracy is not None else None)
     
     # Compute Ground Truth Performance
     ground_truth_available = False
@@ -1466,6 +1456,9 @@ def evaluate_and_scoring_data(params: dict):
         ground_truth_performance = round(Yhat_unlabeled_dataset[label_column].tolist().count(1) / len(Yhat_unlabeled_dataset), 3)
         validation_set_ratios.append(ground_truth_performance)
         ground_truth_available = True
+        # Calculate accuracy separately
+        accuracy = (Yhat_unlabeled_dataset[label_column].values.astype(int) == Yhat_unlabeled_dataset[prediction_column].values.astype(int)).mean()
+        accuracy_scores.append(round(accuracy, 3) if accuracy is not None else None)
     else:
         validation_set_ratios.append(None)
     
@@ -1487,7 +1480,7 @@ def evaluate_and_scoring_data(params: dict):
         prediction_column_mapping = {
             "Context_Relevance_Label": "ARES_Context_Relevance_Prediction",
             "Answer_Relevance_Label": "ARES_Answer_Relevance_Prediction",
-            "Answer_Faithfulness_Label": "ARES_Answer_Faithfulness_Prediction"
+            "Answer_Faithfulness_Label": "ARES_Answer_Faithfulness_Prediction",
             "Language_Consistency_Label": "ARES_Language_Consistency_Prediction"
         }
         prediction_column_name = prediction_column_mapping.get(label_column, prediction_column)

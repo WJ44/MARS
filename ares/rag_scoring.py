@@ -189,7 +189,8 @@ def rag_scoring_config(alpha, num_trials, evaluation_datasets, few_shot_examples
                 "azure_openai_config": azure_openai_config
             }
             dataset_results = evaluate_and_scoring_data(evaluate_scoring_settings)
-        
-        all_evaluation_results.append(dataset_results)
+            chekpoint_results.append(dataset_results)
+
+        all_evaluation_results.append(chekpoint_results)
             
     return all_evaluation_results

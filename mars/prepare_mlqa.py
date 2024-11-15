@@ -10,9 +10,9 @@ from itertools import product
 
 random.seed(42)
 
-SPLIT = "test" # Choose between "dev" and "test"
+SPLIT = "dev" # Choose between "dev" and "test"
 
-LANGS = ["en", "de"]
+LANGS = ["en", "ar"]
 
 # Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
@@ -50,8 +50,10 @@ dataset_de_de = load_and_process_dataset("de")
 dataset_ar_ar = load_and_process_dataset("ar")
 
 # Combine English and German datasets
-dataset_merged = pd.merge(dataset_en_en, dataset_de_de, on="id")
-dataset_merged = pd.merge(dataset_merged, dataset_ar_ar, on="id")
+if "de" in LANGS:
+    dataset_merged = pd.merge(dataset_en_en, dataset_de_de, on="id")
+elif "ar" in LANGS:
+    dataset_merged = pd.merge(dataset_en_en, dataset_ar_ar, on="id")
 
 # Sample few-shot examples
 if SPLIT == "test":

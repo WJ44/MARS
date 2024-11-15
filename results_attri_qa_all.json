@@ -1,1 +1,0 @@
-[[{"Label_Column": "Answer_Faithfulness_Label", "Evaluation_Set": "multilingual_data/attri_qa_test.tsv", "ARES_Prediction": 0.0736687631027253, "ARES_Confidence_Interval": [0.019, 0.128], "Number_of_Examples_in_Evaluation_Set": 3816, "Ground_Truth_Performance": 0.053, "ARES_LLM_Judge_Accuracy_on_Ground_Truth_Labels": 0.299, "Annotated_Examples_used_for_PPI": 300}]]

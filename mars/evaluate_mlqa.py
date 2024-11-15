@@ -2,7 +2,7 @@ from ares import ARES
 import json
 from itertools import product
 
-LANGS = ["en", "ar"]
+LANGS = ["en", "de"]
 
 for lang1, lang2 in product(LANGS, repeat=2):
     ppi_config = {

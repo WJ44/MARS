@@ -10,7 +10,7 @@ from itertools import product
 
 random.seed(42)
 
-SPLIT = "dev" # Choose between "dev" and "test"
+SPLIT = "test" # Choose between "dev" and "test"
 
 LANGS = ["en", "de"]
 

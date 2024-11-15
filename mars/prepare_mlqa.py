@@ -10,7 +10,7 @@ from itertools import product
 
 random.seed(42)
 
-SPLIT = "dev" # Choose between "dev" and "test"
+SPLIT = "test" # Choose between "dev" and "test"
 
 LANGS = ["en", "ar"]
 
@@ -69,10 +69,10 @@ def create_few_shot_files(few_shot):
     few_shot["Contradictory_Answer"] = "TODO"  # Added by hand
 
     few_shot_files = {
-        f"mlqa_{SPLIT}_few_shot_en_en.tsv": few_shot[["Document_en", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
-        f"mlqa_{SPLIT}_few_shot_de_de.tsv": few_shot[["Document_de", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
-        f"mlqa_{SPLIT}_few_shot_en_de.tsv": few_shot[["Document_en", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
-        f"mlqa_{SPLIT}_few_shot_de_en.tsv": few_shot[["Document_de", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
+        f"mlqa_({LANGS[1]})_{SPLIT}_few_shot_en_en.tsv": few_shot[["Document_en", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
+        f"mlqa_({LANGS[1]})_{SPLIT}_few_shot_de_de.tsv": few_shot[["Document_de", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
+        f"mlqa_({LANGS[1]})_{SPLIT}_few_shot_en_de.tsv": few_shot[["Document_en", "Answer_de", "Query_de", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
+        f"mlqa_({LANGS[1]})_{SPLIT}_few_shot_de_en.tsv": few_shot[["Document_de", "Answer_en", "Query_en", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]],
     }
 
     few_shot_en_en_wrong = few_shot_files[f"mlqa_{SPLIT}_few_shot_en_en.tsv"].copy()
@@ -88,16 +88,16 @@ def create_few_shot_files(few_shot):
     few_shot_en_de_wrong["Language_Consistency_Label"] = "[[No]]"
     few_shot_de_en_wrong["Language_Consistency_Label"] = "[[No]]"
 
-    few_shot_files[f"mlqa_{SPLIT}_few_shot_en_en.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_en_en.tsv"], few_shot_en_en_wrong], axis=0, ignore_index=True)
-    few_shot_files[f"mlqa_{SPLIT}_few_shot_de_de.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_de_de.tsv"], few_shot_de_de_wrong], axis=0, ignore_index=True)
-    few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"], few_shot_en_de_wrong], axis=0, ignore_index=True)
-    few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"], few_shot_de_en_wrong], axis=0, ignore_index=True)
+    few_shot_files[f"mlqa_({LANGS[1]})_{SPLIT}_few_shot_en_en.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_en_en.tsv"], few_shot_en_en_wrong], axis=0, ignore_index=True)
+    few_shot_files[f"mlqa_({LANGS[1]})_{SPLIT}_few_shot_de_de.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_de_de.tsv"], few_shot_de_de_wrong], axis=0, ignore_index=True)
+    few_shot_files[f"mlqa_({LANGS[1]})_{SPLIT}_few_shot_en_de.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_en_de.tsv"], few_shot_en_de_wrong], axis=0, ignore_index=True)
+    few_shot_files[f"mlqa_({LANGS[1]})_{SPLIT}_few_shot_de_en.tsv"] = pd.concat([few_shot_files[f"mlqa_{SPLIT}_few_shot_de_en.tsv"], few_shot_de_en_wrong], axis=0, ignore_index=True)
 
     for filename, df in few_shot_files.items():
         df.columns = ["Document", "Answer", "Query", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label", "Contradictory_Answer"]
         df.to_csv(f"multilingual_data/{filename}", sep="\t", index=False)
 
-if SPLIT == "test" and LANGS == ["en", "de"] and not os.path.exists(f"multilingual_data/mlqa_{SPLIT}_few_shot_en_en.tsv"):
+if SPLIT == "test" and LANGS == ["en", "de"] and not os.path.exists(f"multilingual_data/mlqa_({LANGS[1]})_{SPLIT}_few_shot_en_en.tsv"):
     create_few_shot_files(few_shot)
 
 # Function to create dataset files
@@ -113,11 +113,11 @@ def create_dataset_file(dataset, doc_lang, qa_lang, filename):
 
 # Create monolingual and cross-lingual datasets
 for lang1, lang2 in product(LANGS, repeat=2):
-    create_dataset_file(dataset_merged, lang1, lang2, f"multilingual_data/mlqa_{SPLIT}_{lang1}_{lang2}.tsv")
+    create_dataset_file(dataset_merged, lang1, lang2, f"multilingual_data/mlqa_({LANGS[1]})_{SPLIT}_{lang1}_{lang2}.tsv")
 
 # Combine all datasets
 dataset = pd.concat([
-    pd.read_csv(f"multilingual_data/mlqa_{SPLIT}_{lang1}_{lang2}.tsv", sep="\t") for lang1, lang2 in product(LANGS, repeat=2)
+    pd.read_csv(f"multilingual_data/mlqa_({LANGS[1]})_{SPLIT}_{lang1}_{lang2}.tsv", sep="\t") for lang1, lang2 in product(LANGS, repeat=2)
 ], axis=0, ignore_index=True)
 
 # Precompute possible incorrect passages and answers
@@ -246,13 +246,13 @@ for ratio in positive_negative_ratios:
     dataset_combined = pd.concat([split, split_copy_1, split_copy_2, split_copy_3, split_copy_4], axis=0, ignore_index=True)
     dataset_combined = dataset_combined.sample(n=len(dataset_combined), random_state=42)
 
-    file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}_{LANGS[1]}.tsv"
+    file_path = f"multilingual_data/mlqa_({LANGS[1]})_{SPLIT}_ratio_{ratio}_all.tsv"
     # For every id, only keep a single combination of qa_lang and doc_lang, randomly
     dataset_reduced = dataset_combined.drop_duplicates(subset=["id", "Context_Relevance_Label", "Answer_Faithfulness_Label", "Answer_Relevance_Label", "Language_Consistency_Label"])
     dataset_reduced.to_csv(file_path, sep="\t", index=False)
 
     for lang1, lang2 in product(LANGS, repeat=2):
-        file_path = f"multilingual_data/mlqa_{SPLIT}_ratio_{ratio}_{lang1}_{lang2}.tsv"
+        file_path = f"multilingual_data/mlqa_({LANGS[1]})_{SPLIT}_ratio_{ratio}_{lang1}_{lang2}.tsv"
         dataset_filtered = dataset_combined[(dataset_combined["doc_lang"] == lang1) & (dataset_combined["qa_lang"] == lang2)]
         
         dataset_filtered.to_csv(file_path, sep="\t", index=False)

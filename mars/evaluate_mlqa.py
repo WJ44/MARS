@@ -2,7 +2,7 @@ from ares import ARES
 import json
 from itertools import product
 
-LANGS = ["en", "de"]
+LANGS = ["en", "ar"]
 
 for lang1, lang2 in product(LANGS, repeat=2):
     ppi_config = {
@@ -24,6 +24,7 @@ for lang1, lang2 in product(LANGS, repeat=2):
 
 ppi_config = {
     "evaluation_datasets": [f"multilingual_data/mlqa_({LANGS[1]})_test_ratio_0.5_all.tsv", f"multilingual_data/mlqa_({LANGS[1]})_test_ratio_0.525_all.tsv", f"multilingual_data/mlqa_({LANGS[1]})_test_ratio_0.55_all.tsv", f"multilingual_data/mlqa_({LANGS[1]})_test_ratio_0.575_all.tsv", f"multilingual_data/mlqa_({LANGS[1]})_test_ratio_0.6_all.tsv", f"multilingual_data/mlqa_({LANGS[1]})_test_ratio_0.625_all.tsv", f"multilingual_data/mlqa_({LANGS[1]})_test_ratio_0.65_all.tsv", f"multilingual_data/mlqa_({LANGS[1]})_test_ratio_0.675_all.tsv", f"multilingual_data/mlqa_({LANGS[1]})_test_ratio_0.7_all.tsv"],
+    "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Context_Relevance_Label_mlqa_dev_ratio_0.5_2024-09-30_15:27:39.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Relevance_Label_mlqa_dev_ratio_0.5_2024-10-01_07:58:16.pt", "checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt", "checkpoints/microsoft-mdeberta-v3-base/Language_Consistency_Label_mlqa_dev_ratio_0.5_2024-10-02_13:18:21.pt"],
     "rag_type": "question_answering",
     "labels": ["Context_Relevance_Label", "Answer_Relevance_Label", "Answer_Faithfulness_Label", "Language_Consistency_Label"],
     "gold_label_paths": [f"multilingual_data/mlqa_({LANGS[1]})_dev_ratio_0.5_all.tsv"],

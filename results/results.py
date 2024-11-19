@@ -59,6 +59,6 @@ for filename in sorted(os.listdir(path)):
             tikzplotlib.save(plot_filename)
             print(f"Saved plot to {plot_filename}")
 
-            table.loc[experiment_name][label] = tau
+            table.loc[experiment_name, label] = tau
         
 print(table.to_latex(float_format="%.2f"))

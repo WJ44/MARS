@@ -14,7 +14,7 @@ SPLIT = "test" # Choose between "dev" and "test"
 
 SIZE = 500
 
-LANGS = ["en", "de"]
+LANGS = ["en", "ar"]
 
 # Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
@@ -26,7 +26,7 @@ with open(EN_INDEX_PATH, "r") as f:
     indexes_en = json.load(f)
 with open(DE_INDEX_PATH, "r") as f:
     indexes_de = json.load(f)
-with open(AR_INDEX_PATH, "r") as f:
+with open(AR_INDEX_PATH, "r") as f: 
     indexes_ar = json.load(f)
 
 indexes = {"en": indexes_en, "de": indexes_de, "ar": indexes_ar}
@@ -225,8 +225,9 @@ ids_copy_3 = ids.copy()
 ids_copy_4 = ids.copy()
 
 num_positives = len(ids) // len(positive_negative_ratios)
+cap = num_positives > SIZE
 for ratio in positive_negative_ratios:
-    if SPLIT == "test" and num_positives > SIZE:
+    if SPLIT == "test" and cap:
         num_positives = int(ratio * SIZE)
     negatives_to_add = int((1 - ratio) / ratio * num_positives)
     
@@ -240,7 +241,6 @@ for ratio in positive_negative_ratios:
     ids_copy_3 = ids_copy_3.drop(negative_ids_3.index)
     negative_ids_4 = ids_copy_4.sample(n=negatives_to_add, random_state=42)
     ids_copy_4 = ids_copy_4.drop(negative_ids_4.index)
-
 
     split = dataset[dataset["id"].isin(positive_ids[0])]
     split_copy_1 = dataset_copy_1[dataset_copy_1["id"].isin(negative_ids_1[0])]

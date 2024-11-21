@@ -7,15 +7,18 @@ import tikzplotlib
 
 path = "results"
 
-table = pd.DataFrame(columns=["Experiment", "Context Relevance", "Answer Relevance", "Answer Faithfulness", "Language Consistency"])
-table.set_index("Experiment", inplace=True)
+accuracy_table = pd.DataFrame(columns=["Experiment", "Context Relevance", "Answer Relevance", "Answer Faithfulness", "Language Consistency"])
+accuracy_table.set_index("Experiment", inplace=True)
+
+tau_table = accuracy_table.copy()
 
 for filename in sorted(os.listdir(path)):
     if filename.endswith(".json"):
         experiment_name = filename.replace("results_", "").replace(".json", "").replace("_", " ")
         file_path = os.path.join(path, filename)
 
-        table.loc[experiment_name] = [0.0, 0.0, 0.0, 0.0]
+        accuracy_table.loc[experiment_name] = [0.0, 0.0, 0.0, 0.0]
+        tau_table.loc[experiment_name] = [0.0, 0.0, 0.0, 0.0]
 
         with open(file_path, 'r') as file:
             results = json.load(file)
@@ -31,8 +34,9 @@ for filename in sorted(os.listdir(path)):
                 truths.append(split["Ground_Truth_Performance"])
                 confidences.append(split["ARES_Confidence_Interval"])
             tau, p_value = kendalltau(scores, truths)
+            accuracy = sum(accuracies) / len(accuracies)
             print("Metric: ", experiment[0]["Label_Column"])
-            print("Average accuracy: ", sum(accuracies) / len(accuracies))
+            print("Average accuracy: ", accuracy)
             print("Kendall's tau: ", tau)
 
             # Transpose confidences
@@ -59,6 +63,8 @@ for filename in sorted(os.listdir(path)):
             tikzplotlib.save(plot_filename)
             print(f"Saved plot to {plot_filename}")
 
-            table.loc[experiment_name][label] = tau
-        
-print(table.to_latex(float_format="%.2f"))
+            accuracy_table.loc[experiment_name, label] = accuracy
+            tau_table.loc[experiment_name, label] = tau
+
+print(accuracy_table.to_latex(float_format="{:.1%}".format))
+print(tau_table.to_latex(float_format="%.2f"))

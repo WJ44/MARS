@@ -1,0 +1,97 @@
+% This file was created with tikzplotlib v0.10.1.post9.
+\begin{tikzpicture}
+
+\definecolor{darkgrey176}{RGB}{176,176,176}
+\definecolor{green01270}{RGB}{0,127,0}
+\definecolor{lightgrey204}{RGB}{204,204,204}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+legend cell align={left},
+legend style={
+  fill opacity=0.8,
+  draw opacity=1,
+  text opacity=1,
+  draw=lightgrey204,
+  mark options={mark size=3}
+},
+tick align=outside,
+tick pos=left,
+title={MLQA (de) de-de - Language Consistency},
+x grid style={darkgrey176},
+xlabel={Ground Truth Performance},
+xmajorgrids,
+xmin=0.48995, xmax=0.71105,
+xtick style={color=black},
+y grid style={darkgrey176},
+ylabel={ARES Prediction},
+ymajorgrids,
+ymin=0, ymax=1,
+ytick style={color=black}
+]
+\addplot [draw=green01270, fill=green01270, mark size=3pt, mark=*, only marks]
+table{%
+x  y
+0.5 0.5
+0.525 0.525
+0.551 0.551
+0.575 0.575
+0.6 0.6
+0.625 0.625
+0.651 0.651
+0.675 0.675
+0.701 0.701
+};
+\addlegendentry{Ground Truth Performance}
+\path [draw=red, semithick]
+(axis cs:0.5,0.468)
+--(axis cs:0.5,0.578);
+
+\path [draw=red, semithick]
+(axis cs:0.525,0.487)
+--(axis cs:0.525,0.598);
+
+\path [draw=red, semithick]
+(axis cs:0.551,0.517)
+--(axis cs:0.551,0.629);
+
+\path [draw=red, semithick]
+(axis cs:0.575,0.506)
+--(axis cs:0.575,0.619);
+
+\path [draw=red, semithick]
+(axis cs:0.6,0.523)
+--(axis cs:0.6,0.637);
+
+\path [draw=red, semithick]
+(axis cs:0.625,0.544)
+--(axis cs:0.625,0.658);
+
+\path [draw=red, semithick]
+(axis cs:0.651,0.537)
+--(axis cs:0.651,0.653);
+
+\path [draw=red, semithick]
+(axis cs:0.675,0.582)
+--(axis cs:0.675,0.699);
+
+\path [draw=red, semithick]
+(axis cs:0.701,0.571)
+--(axis cs:0.701,0.689);
+
+\addplot [semithick, steelblue31119180, mark=*, mark size=3, mark options={solid}, only marks]
+table {%
+0.5 0.522974051896208
+0.525 0.542494758909853
+0.551 0.573369963369963
+0.575 0.562430156907769
+0.6 0.580259481037924
+0.625 0.601136079900125
+0.651 0.594848484848485
+0.675 0.640278526504942
+0.701 0.62981351981352
+};
+\addlegendentry{Scores with Confidence Intervals}
+\end{axis}
+
+\end{tikzpicture}

@@ -1462,6 +1462,8 @@ def evaluate_and_scoring_data(params: dict):
     else:
         validation_set_ratios.append(None)
     
+    pre_ppi_score = round(Yhat_unlabeled_dataset[prediction_column].tolist().count(1) / len(Yhat_unlabeled_dataset), 3)
+    
     # Build the results dictionary
     results = {
         "Label_Column": label_column,
@@ -1471,7 +1473,8 @@ def evaluate_and_scoring_data(params: dict):
         "Number_of_Examples_in_Evaluation_Set": validation_set_lengths[-1] if validation_set_lengths else None,
         "Ground_Truth_Performance": validation_set_ratios[-1],
         "ARES_LLM_Judge_Accuracy_on_Ground_Truth_Labels": accuracy_scores[-1],
-        "Annotated_Examples_used_for_PPI": len(Y_labeled)
+        "Annotated_Examples_used_for_PPI": len(Y_labeled),
+        "Pre_PPI_Score": pre_ppi_score
     }
     
     # Save the labeled dataset with predictions to a new TSV file
@@ -1488,6 +1491,7 @@ def evaluate_and_scoring_data(params: dict):
         if os.path.exists(prediction_filepath):
             existing_predictions = pd.read_csv(prediction_filepath, sep="\t")
             existing_predictions[prediction_column_name] = Yhat_unlabeled_dataset[prediction_column].values
+            existing_predictions[label_column] = Yhat_unlabeled_dataset[label_column].values
         else:
             existing_predictions = Yhat_unlabeled_dataset
             existing_predictions.rename(columns={prediction_column: prediction_column_name}, inplace=True)
@@ -1511,6 +1515,7 @@ def evaluate_and_scoring_data(params: dict):
     if accuracy_scores[-1] is not None:
         print(f"ARES LLM Judge Accuracy on Ground Truth Labels: {accuracy_scores[-1]}")
     print(f"Annotated Examples used for PPI: {len(Y_labeled)}")
+    print(f"Pre-PPI Score: {pre_ppi_score}")
     print("--------------------------------------------------\n")
 
     return results

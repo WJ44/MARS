@@ -12,7 +12,9 @@ random.seed(42)
 
 SPLIT = "test" # Choose between "dev" and "test"
 
-LANGS = ["en", "ar"]
+SIZE = 500
+
+LANGS = ["en", "de"]
 
 # Constants for file paths                                                    
 EN_INDEX_PATH = f"multilingual_data/mlqa_index_en_{SPLIT}.json"
@@ -221,8 +223,11 @@ ids_copy_1 = ids.copy()
 ids_copy_2 = ids.copy()
 ids_copy_3 = ids.copy()
 ids_copy_4 = ids.copy()
+
 num_positives = len(ids) // len(positive_negative_ratios)
 for ratio in positive_negative_ratios:
+    if SPLIT == "test" and num_positives > SIZE:
+        num_positives = int(ratio * SIZE)
     negatives_to_add = int((1 - ratio) / ratio * num_positives)
     
     positive_ids = ids.sample(n=num_positives, random_state=42)

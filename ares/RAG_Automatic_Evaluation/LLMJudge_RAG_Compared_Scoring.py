@@ -1488,13 +1488,12 @@ def evaluate_and_scoring_data(params: dict):
         }
         prediction_column_name = prediction_column_mapping.get(label_column, prediction_column)
 
+        Yhat_unlabeled_dataset.rename(columns={prediction_column: prediction_column_name}, inplace=True)
         if os.path.exists(prediction_filepath):
             existing_predictions = pd.read_csv(prediction_filepath, sep="\t")
-            existing_predictions[prediction_column_name] = Yhat_unlabeled_dataset[prediction_column].values
-            existing_predictions[label_column] = Yhat_unlabeled_dataset[label_column].values
+            existing_predictions = pd.concat([existing_predictions, Yhat_unlabeled_dataset], ignore_index=True)
         else:
             existing_predictions = Yhat_unlabeled_dataset
-            existing_predictions.rename(columns={prediction_column: prediction_column_name}, inplace=True)
 
         existing_predictions.to_csv(prediction_filepath, sep='\t', index=False)
         print("--------------------------------------------------")

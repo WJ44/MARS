@@ -1492,6 +1492,8 @@ def evaluate_and_scoring_data(params: dict):
         if os.path.exists(prediction_filepath):
             existing_predictions = pd.read_csv(prediction_filepath, sep="\t")
             existing_predictions = pd.concat([existing_predictions, Yhat_unlabeled_dataset], ignore_index=True)
+            # remove duplicates
+            existing_predictions = existing_predictions.drop_duplicates(subset=['Query', 'Document', 'Answer', 'doc_lang', 'qa_lang'])
         else:
             existing_predictions = Yhat_unlabeled_dataset
 

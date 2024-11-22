@@ -1,3 +1,4 @@
+from itertools import product
 import random
 import pandas as pd
 import os
@@ -12,24 +13,28 @@ random.seed(42)
 
 SPLIT = "test" # Choose between "dev" and "test"
 
+LANGS = ["en", "bn"]
+
 if SPLIT == "test":
-    DATASET_PATH = "multilingual_data/xor_attriqa/in-language/ja.jsonl"
+    DATASET_PATH = f"multilingual_data/xor_attriqa/in-language/{LANGS[1]}.jsonl"
 elif SPLIT == "dev":
     DATASET_PATH = "multilingual_data/xor_attriqa/in-language/val.jsonl"
 
 xor_attriqa_split = pd.read_json(DATASET_PATH, lines=True)
 
 if SPLIT == "dev":
-    xor_attriqa_split = xor_attriqa_split[xor_attriqa_split["query_language"] == "ja"]
+    xor_attriqa_train = pd.read_json("multilingual_data/xor_attriqa/in-language/train.jsonl", lines=True)
+    xor_attriqa_split = pd.concat([xor_attriqa_split, xor_attriqa_train], ignore_index=True)
+    xor_attriqa_split = xor_attriqa_split[xor_attriqa_split["query_language"] == LANGS[1]]
 
 # Named to be consistent with the mlqa code
 dataset_merged = pd.DataFrame()
-dataset_merged["Document_en"] = xor_attriqa_split["passage_en"]
-dataset_merged["Answer_en"] = xor_attriqa_split["prediction_translated_en"]
-dataset_merged["Query_en"] = xor_attriqa_split["query_translated_en"]
-dataset_merged["Document_ja"] = xor_attriqa_split["passage_in_language"]
-dataset_merged["Answer_ja"] = xor_attriqa_split["prediction"]
-dataset_merged["Query_ja"] = xor_attriqa_split["query"]
+dataset_merged[f"Document_{LANGS[0]}"] = xor_attriqa_split[f"passage_{LANGS[0]}"]
+dataset_merged[f"Answer_{LANGS[0]}"] = xor_attriqa_split[f"prediction_translated_{LANGS[0]}"]
+dataset_merged[f"Query_{LANGS[0]}"] = xor_attriqa_split[f"query_translated_{LANGS[0]}"]
+dataset_merged[f"Document_{LANGS[1]}"] = xor_attriqa_split["passage_in_language"]
+dataset_merged[f"Answer_{LANGS[1]}"] = xor_attriqa_split["prediction"]
+dataset_merged[f"Query_{LANGS[1]}"] = xor_attriqa_split["query"]
 dataset_merged["Answer_Faithfulness_Label"] = xor_attriqa_split["ais"].apply(lambda x: 1 if x == True else 0)
 dataset_merged["id"] = dataset_merged["Document_en"].astype(str) + dataset_merged["Query_en"].astype(str)
 dataset_merged["id"] = dataset_merged["id"].apply(hash)
@@ -52,19 +57,15 @@ def create_dataset_file(dataset, doc_lang, qa_lang, filename):
     dataset_copy.to_csv(filename, sep="\t", index=False)
 
 # Create monolingual and cross-lingual datasets
-create_dataset_file(dataset_merged, "en", "en", f"multilingual_data/attri_qa_{SPLIT}_en_en.tsv")
-create_dataset_file(dataset_merged, "ja", "ja", f"multilingual_data/attri_qa_{SPLIT}_ja_ja.tsv")
-create_dataset_file(dataset_merged, "ja", "en", f"multilingual_data/attri_qa_{SPLIT}_ja_en.tsv")
-create_dataset_file(dataset_merged, "en", "ja", f"multilingual_data/attri_qa_{SPLIT}_en_ja.tsv")
+for lang1, lang2 in product(LANGS, repeat=2):
+    create_dataset_file(dataset_merged, lang1, lang2, f"multilingual_data/attri_qa_({LANGS[1]})_{SPLIT}_{lang1}_{lang2}.tsv")
 
 # Combine all datasets
 dataset = pd.concat([
-    pd.read_csv(f"multilingual_data/attri_qa_{SPLIT}_en_en.tsv", sep="\t"),
-    pd.read_csv(f"multilingual_data/attri_qa_{SPLIT}_ja_ja.tsv", sep="\t"),
-    pd.read_csv(f"multilingual_data/attri_qa_{SPLIT}_ja_en.tsv", sep="\t"),
-    pd.read_csv(f"multilingual_data/attri_qa_{SPLIT}_en_ja.tsv", sep="\t")
+    pd.read_csv(f"multilingual_data/attri_qa_({LANGS[1]})_{SPLIT}_{lang1}_{lang2}.tsv", sep="\t") for lang1, lang2 in product(LANGS, repeat=2)
 ], axis=0, ignore_index=True)
 
 
 dataset = dataset.sample(n=len(dataset), random_state=42)
-dataset.to_csv(f"multilingual_data/attri_qa_{SPLIT}.tsv", sep="\t", index=False)
+dataset_reduced = dataset.drop_duplicates(subset=["id", "Answer_Faithfulness_Label"])
+dataset_reduced.to_csv(f"multilingual_data/attri_qa_({LANGS[1]})_{SPLIT}_all.tsv", sep="\t", index=False)

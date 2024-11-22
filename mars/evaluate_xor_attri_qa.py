@@ -1,36 +1,41 @@
+from itertools import product
 from ares import ARES
 import json
 
-for lang1, lang2 in [("en", "en"), ("ja", "ja"), ("ja", "en"), ("en", "ja")]:
+LANGS = ["en", "ja"]
+
+for lang1, lang2 in product(LANGS, repeat=2):
     ppi_config = {
-        "evaluation_datasets": [f"multilingual_data/attri_qa_test_{lang1}_{lang2}.tsv"],
+        "evaluation_datasets": [f"multilingual_data/attri_qa_({LANGS[1]})_test_{lang1}_{lang2}.tsv"],
         "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt"],
         "rag_type": "question_answering",
         "labels": ["Answer_Faithfulness_Label"],
-        "gold_label_paths": [f"multilingual_data/attri_qa_dev_{lang1}_{lang2}.tsv"],
+        "gold_label_paths": [f"multilingual_data/attri_qa_({LANGS[1]})_dev_{lang1}_{lang2}.tsv"],
         "model_choice": "microsoft/mdeberta-v3-base",
-        "assigned_batch_size": 32,
-        "prediction_file_paths": [f"results_output_attri_qa_{lang1}_{lang2}_Answer_Faithfulness.json"],
+        "assigned_batch_size": 8,
+        "prediction_file_paths": [f"attri_qa_({LANGS[1]})_test_{lang1}_{lang2}_output.tsv"],
+        "azure_openai_config": {},
     }
 
     ares_module = ARES(ppi=ppi_config)
     results = ares_module.evaluate_RAG()
     print(results)
-    json.dump(results, open(f"results_attri_qa_{lang1}-{lang2}.json", "w"))
+    json.dump(results, open(f"results/results_attri_qa_(j{LANGS[1]}a)_{lang1}-{lang2}.json", "w"))
 
 
 ppi_config = {
-    "evaluation_datasets": ["multilingual_data/attri_qa_test.tsv"],
+    "evaluation_datasets": [f"multilingual_data/attri_qa_({LANGS[1]})_test_all.tsv"],
     "checkpoints": ["checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt"],
     "rag_type": "question_answering",
     "labels": ["Answer_Faithfulness_Label"],
-    "gold_label_paths": ["multilingual_data/attri_qa_dev.tsv"],
+    "gold_label_paths": [f"multilingual_data/attri_qa_({LANGS[1]})_dev_all.tsv"],
     "model_choice": "microsoft/mdeberta-v3-base",
-    "assigned_batch_size": 32,
-    "prediction_file_paths": ["results_output_attri_qa_Answer_Faithfulness.json"],
+    "assigned_batch_size": 8,
+    "prediction_file_paths": [f"attri_qa_({LANGS[1]})_test_all_output.tsv"],
+    "azure_openai_config": {},
 }
 
 ares_module = ARES(ppi=ppi_config)
 results = ares_module.evaluate_RAG()
 print(results)
-json.dump(results, open("results_attri_qa_all.json", "w"))
+json.dump(results, open(f"results/results_attri_qa_({LANGS[1]})_all.json", "w"))

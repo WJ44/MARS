@@ -3,7 +3,7 @@ from itertools import product
 
 from ares import ARES
 
-LANGS = ["en", "de"]
+LANGS = ["en", "ar"]
 
 for lang1, lang2 in product(LANGS, repeat=2):
     ppi_config = {

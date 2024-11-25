@@ -1331,7 +1331,7 @@ def evaluate_and_scoring_data(params: dict):
 
         # Compute the metric after all batches are processed
         results_metric = metric.compute()
-        results['accuracy'] = results_metric.get('accuracy', None)
+        # results['accuracy'] = results_metric.get('accuracy', None)
     
     else:
         if llm_judge == "None":
@@ -1460,6 +1460,7 @@ def evaluate_and_scoring_data(params: dict):
         accuracy = (Yhat_unlabeled_dataset[label_column].values.astype(int) == Yhat_unlabeled_dataset[prediction_column].values.astype(int)).mean()
         accuracy_scores.append(round(accuracy, 3) if accuracy is not None else None)
     else:
+        accuracy_scores.append(None)
         validation_set_ratios.append(None)
     
     pre_ppi_score = round(Yhat_unlabeled_dataset[prediction_column].tolist().count(1) / len(Yhat_unlabeled_dataset), 3)

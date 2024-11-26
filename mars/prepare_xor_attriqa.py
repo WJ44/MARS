@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 random.seed(42)
 
-SPLIT = "test" # Choose between "dev" and "test"
+SPLIT = "dev" # Choose between "dev" and "test"
 
 LANGS = ["en", "bn"]
 

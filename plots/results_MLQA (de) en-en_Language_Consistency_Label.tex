@@ -1,8 +1,9 @@
 % This file was created with tikzplotlib v0.10.1.post9.
 \begin{tikzpicture}
 
+\definecolor{crimson2143940}{RGB}{214,39,40}
 \definecolor{darkgrey176}{RGB}{176,176,176}
-\definecolor{green01270}{RGB}{0,127,0}
+\definecolor{darkorange25512714}{RGB}{255,127,14}
 \definecolor{lightgrey204}{RGB}{204,204,204}
 \definecolor{steelblue31119180}{RGB}{31,119,180}
 
@@ -21,15 +22,15 @@ title={MLQA (de) en-en - Language Consistency},
 x grid style={darkgrey176},
 xlabel={Ground Truth Performance},
 xmajorgrids,
-xmin=0.48995, xmax=0.71105,
+xmin=0.49, xmax=0.71,
 xtick style={color=black},
 y grid style={darkgrey176},
 ylabel={ARES Prediction},
 ymajorgrids,
-ymin=0, ymax=1,
+ymin=0.3, ymax=0.9,
 ytick style={color=black}
 ]
-\addplot [draw=green01270, fill=green01270, mark size=3pt, mark=*, only marks]
+\addplot [draw=darkorange25512714, fill=darkorange25512714, mark size=3pt, mark=*, only marks]
 table{%
 x  y
 0.5 0.5
@@ -38,60 +39,74 @@ x  y
 0.575 0.575
 0.6 0.6
 0.625 0.625
-0.651 0.651
+0.65 0.65
 0.675 0.675
-0.701 0.701
+0.7 0.7
 };
 \addlegendentry{Ground Truth Performance}
-\path [draw=red, semithick]
-(axis cs:0.5,0.457)
---(axis cs:0.5,0.579);
+\path [draw=steelblue31119180, semithick]
+(axis cs:0.5,0.451)
+--(axis cs:0.5,0.586);
 
-\path [draw=red, semithick]
-(axis cs:0.525,0.457)
---(axis cs:0.525,0.579);
+\path [draw=steelblue31119180, semithick]
+(axis cs:0.525,0.472)
+--(axis cs:0.525,0.607);
 
-\path [draw=red, semithick]
-(axis cs:0.551,0.515)
---(axis cs:0.551,0.639);
+\path [draw=steelblue31119180, semithick]
+(axis cs:0.551,0.472)
+--(axis cs:0.551,0.607);
 
-\path [draw=red, semithick]
-(axis cs:0.575,0.518)
---(axis cs:0.575,0.643);
+\path [draw=steelblue31119180, semithick]
+(axis cs:0.575,0.511)
+--(axis cs:0.575,0.648);
 
-\path [draw=red, semithick]
-(axis cs:0.6,0.516)
---(axis cs:0.6,0.642);
+\path [draw=steelblue31119180, semithick]
+(axis cs:0.6,0.53)
+--(axis cs:0.6,0.667);
 
-\path [draw=red, semithick]
-(axis cs:0.625,0.522)
---(axis cs:0.625,0.648);
+\path [draw=steelblue31119180, semithick]
+(axis cs:0.625,0.509)
+--(axis cs:0.625,0.646);
 
-\path [draw=red, semithick]
-(axis cs:0.651,0.527)
---(axis cs:0.651,0.655);
+\path [draw=steelblue31119180, semithick]
+(axis cs:0.65,0.538)
+--(axis cs:0.65,0.675);
 
-\path [draw=red, semithick]
-(axis cs:0.675,0.587)
---(axis cs:0.675,0.716);
+\path [draw=steelblue31119180, semithick]
+(axis cs:0.675,0.523)
+--(axis cs:0.675,0.66);
 
-\path [draw=red, semithick]
-(axis cs:0.701,0.591)
---(axis cs:0.701,0.72);
+\path [draw=steelblue31119180, semithick]
+(axis cs:0.7,0.59)
+--(axis cs:0.7,0.728);
 
 \addplot [semithick, steelblue31119180, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
-0.5 0.518043912175649
-0.525 0.517987421383648
-0.551 0.576996336996337
-0.575 0.580949100650593
-0.6 0.579121756487026
-0.625 0.584943820224719
-0.651 0.591082251082251
-0.675 0.65141060197664
-0.701 0.655617715617716
+0.5 0.518666666666667
+0.525 0.539331997327989
+0.551 0.539331997327989
+0.575 0.579412157648631
+0.6 0.598666666666667
+0.625 0.577408149632598
+0.65 0.606666666666667
+0.675 0.591436205744823
+0.7 0.658666666666667
 };
 \addlegendentry{Scores with Confidence Intervals}
+\addplot [draw=crimson2143940, fill=crimson2143940, mark size=3pt, mark=x, only marks]
+table{%
+x  y
+0.5 0.312
+0.525 0.333
+0.551 0.333
+0.575 0.373
+0.6 0.392
+0.625 0.371
+0.65 0.4
+0.675 0.385
+0.7 0.452
+};
+\addlegendentry{Pre-PPI Score}
 \end{axis}
 
 \end{tikzpicture}

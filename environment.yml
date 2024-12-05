@@ -1,4 +1,4 @@
-name: ares
+name: mars
 channels:
   - pytorch
   - nvidia

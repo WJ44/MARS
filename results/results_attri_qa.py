@@ -38,18 +38,18 @@ for filename in sorted(os.listdir(path)):
             score_pre_ppi = experiment[0]["Pre_PPI_Score"]
 
             accuracies.append(accuracy)
-            scores.append(score)
+            # scores.append(score)
             truths.append(truth)
+            confidence.append(score)
             confidences.append(confidence)
             scores_pre_ppi.append(score_pre_ppi)
 
 index = pd.MultiIndex.from_tuples(zip(langs, pairs), names=["Language", "Pair"])
-df = pd.DataFrame({"Accuracy": accuracies, "Ground truth": truths, "Pre-PPI score": scores_pre_ppi, "MARS Score": scores, "Confidence interval": confidences}, index=index)
+df = pd.DataFrame({"Accuracy": accuracies, "Ground truth": truths, "Pre-PPI score": scores_pre_ppi, "MARS Score": confidences}, index=index)
 
 print(df.to_latex(formatters={
     "Accuracy": lambda x: "{:.1f}\\%".format(x * 100), 
     "Ground truth": "{:.2f}".format, 
     "Pre-PPI score": "{:.2f}".format, 
-    "MARS Score": "{:.2f}".format, 
-    "Confidence interval": lambda x: f"[{x[0]:.2f}, {x[1]:.2f}]"
+    "MARS Score": lambda x: f"{x[2]:.2f}$\pm${(x[1]-x[0])/2:.2f}"
 }))

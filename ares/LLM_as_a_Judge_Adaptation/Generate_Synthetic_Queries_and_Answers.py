@@ -778,32 +778,30 @@ def generate_wrong_language_answers(synthetic_queries: pd.DataFrame, answer_gene
 
     Args:
         synthetic_queries (pd.DataFrame): DataFrame containing the synthetic queries.
-        answer_generation_settings (dict): Dictionary containing settings for answer generation, including:
-            - 'number_of_contradictory_answers_added_ratio' (float): Ratio to determine the number of contradictory answers to add.
-            - 'few_shot_examples_for_contradictory_answers' (list): Few-shot examples for generating contradictory answers (if applicable).
-            - 'device' (str): Device to use for model inference.
-            - 'tokenizer' (transformers.PreTrainedTokenizer): Tokenizer for the model.
-            - 'model' (transformers.PreTrainedModel): Model to use for generating answers.
-            - 'for_fever_dataset' (bool): Flag indicating if the dataset is for FEVER.
-            - 'for_wow_dataset' (bool): Flag indicating if the dataset is for WoW.
+        answer_generation_settings (dict): Dictionary containing settings and parameters for answer generation.
 
     Returns:
-        pd.DataFrame: DataFrame with added contradictory answers.
+        pd.DataFrame: DataFrame containing the synthetic queries with generated answers.
     """
-
-    synthetic_contradictory_answers = generate_contradictory_answer_examples(
-        synthetic_queries, 
-        int(len(synthetic_queries) * answer_generation_settings['number_of_contradictory_answers_added_ratio']), 
-        few_shot_examples_for_contradictory_answers=answer_generation_settings['few_shot_examples_for_contradictory_answers'], 
-        api_model=answer_generation_settings['api_model'],
-        synthetic_contradictory_answer_prompt=answer_generation_settings['synthetic_contradictory_answer_prompt'],
-        device=answer_generation_settings['device'], 
-        tokenizer=answer_generation_settings['tokenizer'], 
-        model=answer_generation_settings['model'], 
-        for_fever_dataset=answer_generation_settings['for_fever_dataset'], 
-        for_wow_dataset=answer_generation_settings['for_wow_dataset']
+    tqdm.pandas(desc="Generating answers... (FLAN)", total=synthetic_queries.shape[0])
+    synthetic_queries["generated_answer_wrong_language"] = synthetic_queries.progress_apply(
+        lambda x: generate_wrong_language_answer_llm_approach(
+        x["document"], 
+        x["synthetic_query"], 
+        answer_generation_settings['wrong_language_answer_gen_few_shot_examples'], 
+        answer_generation_settings['length_of_fewshot_prompt_wrong_language_answer_gen'], 
+        answer_generation_settings['device'], 
+        answer_generation_settings['tokenizer'], 
+        answer_generation_settings['model'], 
+        answer_generation_settings['for_fever_dataset'], 
+        answer_generation_settings['for_wow_dataset'],
+        answer_generation_settings['document_language'],
+        answer_generation_settings['query_language'],
+        answer_generation_settings['second_language']
+    ), 
+    axis=1
     )
-    return synthetic_contradictory_answers
+    return synthetic_queries
 
 def process_embeddings(synthetic_queries: pd.DataFrame, answer_generation_settings: dict) -> pd.DataFrame:
     """

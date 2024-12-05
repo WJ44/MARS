@@ -15,17 +15,26 @@ from datasets import Dataset
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 from typing import Union
-from vllm import LLM
 
 import openai
-from transformers import (AutoConfig, AutoModelForCausalLM, AutoModelForSeq2SeqLM,
-                          AutoTokenizer, BitsAndBytesConfig)
+from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, BitsAndBytesConfig
 
-from ares.LLM_as_a_Judge_Adaptation.LLM_Synthetic_Generation import generate_synthetic_contradictory_answers_api_approach
+from LLM_as_a_Judge_Adaptation.LLM_Synthetic_Generation import (
+    generate_synthetic_contradictory_answers_api_approach,
+)
 
-def generate_synthetic_query_llm_approach(document: str, prompt: str, length_of_fewshot_prompt: int, 
-device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, percentiles: list, 
-for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_language=None) -> list:
+
+def generate_synthetic_query_llm_approach(
+    document: str,
+    prompt: str,
+    length_of_fewshot_prompt: int,
+    device: torch.device,
+    tokenizer: AutoTokenizer,
+    model: AutoModelForCausalLM,
+    percentiles: list,
+    document_language=None,
+    query_language=None,
+) -> list:
     """
     Generates synthetic queries based on a document using a language model.
 
@@ -51,86 +60,88 @@ for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_la
 
     # Construct the prompt without the document based on the dataset type
     prompt_without_document = prompt + "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
-    if for_fever_dataset:
-        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): "
-    elif for_wow_dataset:
-        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): "
-    else:
-        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): "
+    prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): "
 
     # Calculate the length of tokens for the prompt and document
-    prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors='pt').to(device).shape[1]
-    document_length = tokenizer.encode(document, return_tensors='pt').to(device).shape[1]
+    prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors="pt").to(device).shape[1]
+    document_length = tokenizer.encode(document, return_tensors="pt").to(device).shape[1]
 
     # Check if the total length exceeds the model's maximum input size and truncate if necessary
     if prompt_tokens_length + document_length + 100 >= 2048:
-        encoded_input = tokenizer(document, max_length=2048 - prompt_tokens_length - 100, truncation=True, return_tensors='pt')
-        truncated_document = tokenizer.decode(encoded_input['input_ids'][0][:2048 - prompt_tokens_length - 100]) 
+        encoded_input = tokenizer(
+            document, max_length=2048 - prompt_tokens_length - 100, truncation=True, return_tensors="pt"
+        )
+        truncated_document = tokenizer.decode(encoded_input["input_ids"][0][: 2048 - prompt_tokens_length - 100])
         document = truncated_document.replace("</s>", "")
 
     # Append the document to the prompt
     prompt += "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
     prompt += f"Document ({document_language}): " + document + "\n"
-    if for_fever_dataset:
-        prompt += f"Statement ({query_language}): "
-    elif for_wow_dataset:
-        prompt += f"Dialogue ({query_language}): "
-    else:
-        prompt += f"Question ({query_language}): "
+    prompt += f"Question ({query_language}): "
 
     # Encode the complete prompt
     if model.config.model_type == "cohere":
         prompt = [{"role": "user", "content": prompt}]
 
-        input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
+        input_ids = tokenizer.apply_chat_template(
+            prompt, tokenize=True, add_generation_promt=True, return_tensors="pt"
+        ).to(model.device)
         prompt_len = len(input_ids[0])
         # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 
         # Set the maximum length for the generated text based on the dataset
-        max_length = 32 if not for_wow_dataset else 256
+        max_length = 32
 
         # Generate queries for each percentile
         for percentile in percentiles:
             if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
                 print("Length of problematic input ids: " + str(input_ids.shape))
-                print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+                print("Length of problematic document: " + str(len(encoded_input["input_ids"][0])))
                 assert False
             outputs = model.generate(
                 input_ids=input_ids,
                 max_new_tokens=max_length,
                 do_sample=True,
                 top_p=percentile,
-                num_return_sequences=1)
+                num_return_sequences=1,
+            )
 
             query = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
 
             synthetic_queries.append(query)
     else:
-        input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
+        input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors="pt").to(device)
 
         # Set the maximum length for the generated text based on the dataset
-        max_length = 32 if not for_wow_dataset else 256
+        max_length = 32
 
         # Generate queries for each percentile
         for percentile in percentiles:
             if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
                 print("Length of problematic input ids: " + str(input_ids.shape))
-                print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+                print("Length of problematic document: " + str(len(encoded_input["input_ids"][0])))
                 assert False
             outputs = model.generate(
-                input_ids=input_ids,
-                max_length=max_length,
-                do_sample=True,
-                top_p=percentile,
-                num_return_sequences=1)
+                input_ids=input_ids, max_length=max_length, do_sample=True, top_p=percentile, num_return_sequences=1
+            )
 
             query = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
             synthetic_queries.append(query)
     return synthetic_queries
 
-def generate_answer_llm_approach(document: str, question: str, prompt: str, length_of_fewshot_prompt: int, 
-device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_language=None) -> str:
+
+def generate_answer_llm_approach(
+    document: str,
+    question: str,
+    prompt: str,
+    length_of_fewshot_prompt: int,
+    device: torch.device,
+    tokenizer: AutoTokenizer,
+    model: AutoModelForCausalLM,
+    document_language=None,
+    query_language=None,
+) -> str:
     """
     Generates an answer using a language model based on the provided document and question.
 
@@ -154,80 +165,68 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
     """
     # Construct the prompt without the document based on the dataset type
     prompt_without_document = prompt + "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
-    if for_fever_dataset:
-        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): \nAnswer ({query_language}): "
-    elif for_wow_dataset:
-        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): \nResponse ({query_language}): "
-    else:
-        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): \nAnswer ({query_language}): "
+    prompt_without_document += (
+        f"Document ({document_language}): \nQuestion ({query_language}): \nAnswer ({query_language}): "
+    )
 
     # Calculate the token lengths for the prompt, document, and question
-    prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors='pt').to(device).shape[1]
-    document_length = tokenizer.encode(document, return_tensors='pt').to(device).shape[1]
-    question_length = tokenizer.encode(question, return_tensors='pt').to(device).shape[1]
+    prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors="pt").to(device).shape[1]
+    document_length = tokenizer.encode(document, return_tensors="pt").to(device).shape[1]
+    question_length = tokenizer.encode(question, return_tensors="pt").to(device).shape[1]
 
     # Check if the total length exceeds the model's maximum input size and truncate if necessary
     if prompt_tokens_length + document_length + question_length + 100 >= 2048:
         reduction_length = prompt_tokens_length + question_length + 100
-        encoded_input = tokenizer(document, max_length=2048 - reduction_length, truncation=True, return_tensors='pt')
-        truncated_document = tokenizer.decode(encoded_input['input_ids'][0][:2048 - reduction_length]) 
+        encoded_input = tokenizer(document, max_length=2048 - reduction_length, truncation=True, return_tensors="pt")
+        truncated_document = tokenizer.decode(encoded_input["input_ids"][0][: 2048 - reduction_length])
         document = truncated_document.replace("</s>", "")
 
     # Append the document and question to the prompt
     prompt += "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
     prompt += f"Document ({document_language}): " + document + "\n"
-    if for_fever_dataset:
-        prompt += f"Statement ({query_language}): " + question + "\n"
-        prompt += f"Answer ({query_language}): "
-    elif for_wow_dataset:
-        prompt += f"Dialogue ({query_language}): " + question + "\n"
-        prompt += f"Response ({query_language}): "
-    else:
-        prompt += f"Question ({query_language}): " + question + "\n"
-        prompt += f"Answer ({query_language}): "
+    prompt += f"Question ({query_language}): " + question + "\n"
+    prompt += f"Answer ({query_language}): "
 
     # Encode the complete prompt
     if model.config.model_type == "cohere":
         prompt = [{"role": "user", "content": prompt}]
 
-        input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
+        input_ids = tokenizer.apply_chat_template(
+            prompt, tokenize=True, add_generation_promt=True, return_tensors="pt"
+        ).to(model.device)
         prompt_len = len(input_ids[0])
         # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 
         # Check for encoding issues and generate the answer
         if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
             print("Length of problematic input ids: " + str(input_ids.shape))
-            print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+            print("Length of problematic document: " + str(len(encoded_input["input_ids"][0])))
             assert False
         outputs = model.generate(
-            input_ids=input_ids,
-            max_new_tokens=256,
-            do_sample=True,
-            top_p=0.05,
-            num_return_sequences=1)
+            input_ids=input_ids, max_new_tokens=256, do_sample=True, top_p=0.05, num_return_sequences=1
+        )
 
         answer = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
     else:
-            input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
-    
-            # Check for encoding issues and generate the answer
-            if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
-                print("Length of problematic input ids: " + str(input_ids.shape))
-                print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
-                assert False
-            outputs = model.generate(
-                input_ids=input_ids,
-                max_length=256,
-                do_sample=True,
-                top_p=0.05,
-                num_return_sequences=1)
+        input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors="pt").to(device)
 
-            answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
+        # Check for encoding issues and generate the answer
+        if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
+            print("Length of problematic input ids: " + str(input_ids.shape))
+            print("Length of problematic document: " + str(len(encoded_input["input_ids"][0])))
+            assert False
+        outputs = model.generate(
+            input_ids=input_ids, max_length=256, do_sample=True, top_p=0.05, num_return_sequences=1
+        )
+
+        answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
     return answer
 
-def generate_synthetic_query_openai_approach(document: str, system_prompt: str, 
-few_shot_examples: str, temperatures: list, length_of_fewshot_prompt: int) -> list:
+
+def generate_synthetic_query_openai_approach(
+    document: str, system_prompt: str, few_shot_examples: str, temperatures: list, length_of_fewshot_prompt: int
+) -> list:
     """
     Generates synthetic queries using the OpenAI API with different temperatures.
 
@@ -259,24 +258,15 @@ few_shot_examples: str, temperatures: list, length_of_fewshot_prompt: int) -> li
             user_prompt += "Question: "
 
             # Define the message format for the API request
-            messages = [
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": user_prompt
-                }
-            ]
+            messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
             # Make a request to the OpenAI API with the specified model and temperature
             response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo-16k",  # Consider using "gpt-4" for potentially better results
                 messages=messages,
-                temperature=temp
+                temperature=temp,
             )
-            
+
             # Extract the content from the response and add it to the list of generated documents
             final_response = response["choices"][0]["message"]["content"]
             synth_documents_generated.append(final_response)
@@ -291,6 +281,7 @@ few_shot_examples: str, temperatures: list, length_of_fewshot_prompt: int) -> li
 
     # Return the list of generated synthetic documents
     return synth_documents_generated
+
 
 def generate_answer_from_context(document: str, synth_question: str) -> str:
     """
@@ -329,17 +320,10 @@ def generate_answer_from_context(document: str, synth_question: str) -> str:
             user_prompt = f"Here is the question: {synth_question}\nHere is the context: {document}?"
 
             # Prepare the message payload for the API request
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
+            messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
             # Make the API request to OpenAI
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo-16k",
-                messages=messages,
-                temperature=0.0
-            )
+            response = openai.ChatCompletion.create(model="gpt-3.5-turbo-16k", messages=messages, temperature=0.0)
 
             # Extract the response content from the API response
             final_response = response["choices"][0]["message"]["content"]
@@ -351,6 +335,7 @@ def generate_answer_from_context(document: str, synth_question: str) -> str:
 
     # If all attempts fail, raise an exception
     raise Exception("Failed to generate an answer from the context after multiple attempts.")
+
 
 def generate_contradictory_answer_from_context(document: str, synth_question: str) -> str:
     """
@@ -388,15 +373,10 @@ def generate_contradictory_answer_from_context(document: str, synth_question: st
             combined_prompt = f"{system_prompt}\n\n{user_prompt}"
 
             # Prepare the message payload for the API request
-            messages = [
-                {"role": "user", "content": combined_prompt}
-            ]
+            messages = [{"role": "user", "content": combined_prompt}]
 
             # Make the API request to OpenAI
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo-16k",
-                messages=messages
-            )
+            response = openai.ChatCompletion.create(model="gpt-3.5-turbo-16k", messages=messages)
 
             # Extract the response content from the API response
             final_response = response["choices"][0]["message"]["content"]
@@ -408,6 +388,7 @@ def generate_contradictory_answer_from_context(document: str, synth_question: st
 
     # If all attempts fail, raise an exception
     raise Exception("Failed to generate a contradictory answer from the context after multiple attempts.")
+
 
 def check_generated_answer(answer: str) -> str:
     """
@@ -425,18 +406,30 @@ def check_generated_answer(answer: str) -> str:
     """
     # List of phrases that are considered problematic because they indicate uncertainty
     problematic_phrases = ["I don't know", "don't know", "i don't know"]
-    
+
     # Check each phrase in the list to see if it is present in the answer
     for phrase in problematic_phrases:
         if phrase in answer.lower():  # Convert answer to lowercase to ensure the check is case-insensitive
             return "No"
-    
+
     # If no problematic phrases are found, return "Yes"
     return "Yes"
-    
-def generate_contradictory_answer_examples(queries_dataset: pd.DataFrame, number_of_contradictory_answers_to_generate: int, 
-few_shot_examples_for_contradictory_answers=None, api_model=False, synthetic_contradictory_answer_prompt=None, device=None, tokenizer=None, 
-model=None, for_fever_dataset=None, for_wow_dataset=None, document_language=None, query_language=None) -> pd.DataFrame:
+
+
+def generate_contradictory_answer_examples(
+    queries_dataset: pd.DataFrame,
+    number_of_contradictory_answers_to_generate: int,
+    few_shot_examples_for_contradictory_answers=None,
+    api_model=False,
+    synthetic_contradictory_answer_prompt=None,
+    device=None,
+    tokenizer=None,
+    model=None,
+    for_fever_dataset=None,
+    for_wow_dataset=None,
+    document_language=None,
+    query_language=None,
+) -> pd.DataFrame:
     """
     Generates a specified number of contradictory answers from a given dataset of queries.
 
@@ -478,10 +471,12 @@ model=None, for_fever_dataset=None, for_wow_dataset=None, document_language=None
 
     # Prepare the dataset for processing
     queries_dataset_copy = queries_dataset.copy()
-    queries_dataset_copy = queries_dataset_copy.drop_duplicates(subset=['synthetic_query'])
+    queries_dataset_copy = queries_dataset_copy.drop_duplicates(subset=["synthetic_query"])
 
     # Limit the number of generations to the minimum of the requested number or the dataset size
-    number_of_contradictory_answers_to_generate = min(number_of_contradictory_answers_to_generate, len(queries_dataset_copy))
+    number_of_contradictory_answers_to_generate = min(
+        number_of_contradictory_answers_to_generate, len(queries_dataset_copy)
+    )
     queries_dataset_copy = queries_dataset_copy.sample(n=number_of_contradictory_answers_to_generate, random_state=42)
 
     contradictory_answers = []
@@ -490,25 +485,46 @@ model=None, for_fever_dataset=None, for_wow_dataset=None, document_language=None
     # Generate contradictory answers for each query in the dataset
     for i in tqdm(range(len(queries_dataset_copy))):
         if api_model:
-            contradictory_answer_generated = generate_synthetic_contradictory_answers_api_approach(queries_dataset_copy.iloc[i]['document'], queries_dataset_copy.iloc[i]['synthetic_query'], synthetic_contradictory_answer_prompt, few_shot_examples_for_contradictory_answers, model, for_fever_dataset=for_fever_dataset, for_wow_dataset=for_wow_dataset)
+            contradictory_answer_generated = generate_synthetic_contradictory_answers_api_approach(
+                queries_dataset_copy.iloc[i]["document"],
+                queries_dataset_copy.iloc[i]["synthetic_query"],
+                synthetic_contradictory_answer_prompt,
+                few_shot_examples_for_contradictory_answers,
+                model,
+                for_fever_dataset=for_fever_dataset,
+                for_wow_dataset=for_wow_dataset,
+            )
         else:
-            contradictory_answer_generated = generate_contradictory_answer_llm_approach(queries_dataset_copy.iloc[i]['document'], queries_dataset_copy.iloc[i]['synthetic_query'], few_shot_examples_for_contradictory_answers, device, tokenizer, model, for_fever_dataset=for_fever_dataset, for_wow_dataset=for_wow_dataset, document_language=document_language, query_language=query_language)
+            contradictory_answer_generated = generate_contradictory_answer_llm_approach(
+                queries_dataset_copy.iloc[i]["document"],
+                queries_dataset_copy.iloc[i]["synthetic_query"],
+                few_shot_examples_for_contradictory_answers,
+                device,
+                tokenizer,
+                model,
+                for_fever_dataset=for_fever_dataset,
+                for_wow_dataset=for_wow_dataset,
+                document_language=document_language,
+                query_language=query_language,
+            )
 
         contradictory_answer_generated = remove_problematic_contradictory_phrases(contradictory_answer_generated)
 
-        contradictory_answers.append(contradictory_answer_generated)   
+        contradictory_answers.append(contradictory_answer_generated)
         contradictory_labels.append("No")
 
-    queries_dataset_copy['generated_answer'] = contradictory_answers
-    queries_dataset_copy['Answer_Faithfulness_Label'] = contradictory_labels
-    queries_dataset_copy['Answer_Relevance_Label'] = contradictory_labels
+    queries_dataset_copy["generated_answer"] = contradictory_answers
+    queries_dataset_copy["Answer_Faithfulness_Label"] = contradictory_labels
+    queries_dataset_copy["Answer_Relevance_Label"] = contradictory_labels
 
     # Additional Generation Method: Answer Randomization
     queries_dataset_copy_2 = queries_dataset.copy()
-    queries_dataset_copy_2 = queries_dataset_copy_2.drop_duplicates(subset=['synthetic_query'])
-    queries_dataset_copy_2 = queries_dataset_copy_2.sample(n=number_of_contradictory_answers_to_generate, random_state=42)
-    
-    total_answers = queries_dataset[queries_dataset['Answer_Relevance_Label'] == "Yes"]['generated_answer'].tolist()
+    queries_dataset_copy_2 = queries_dataset_copy_2.drop_duplicates(subset=["synthetic_query"])
+    queries_dataset_copy_2 = queries_dataset_copy_2.sample(
+        n=number_of_contradictory_answers_to_generate, random_state=42
+    )
+
+    total_answers = queries_dataset[queries_dataset["Answer_Relevance_Label"] == "Yes"]["generated_answer"].tolist()
     total_answers = [answer for answer in total_answers if isinstance(answer, str)]
     total_answers = [str(answer) for answer in total_answers]
     total_answers = [answer for answer in total_answers if len(answer) > 5]
@@ -518,23 +534,36 @@ model=None, for_fever_dataset=None, for_wow_dataset=None, document_language=None
     for i in tqdm(range(len(queries_dataset_copy_2))):
 
         random_answer = random.choice(total_answers)
-        contradictory_answers_2.append(random_answer)   
+        contradictory_answers_2.append(random_answer)
         contradictory_labels_2.append("No")
 
-    queries_dataset_copy_2['generated_answer'] = contradictory_answers_2
-    queries_dataset_copy_2['Answer_Relevance_Label'] = contradictory_labels_2
-    queries_dataset_copy_2['Answer_Faithfulness_Label'] = contradictory_labels_2
+    queries_dataset_copy_2["generated_answer"] = contradictory_answers_2
+    queries_dataset_copy_2["Answer_Relevance_Label"] = contradictory_labels_2
+    queries_dataset_copy_2["Answer_Faithfulness_Label"] = contradictory_labels_2
 
     # Combine the original dataset with the two copied datasets
-    queries_dataset = pd.concat([queries_dataset, queries_dataset_copy, queries_dataset_copy_2], axis=0, ignore_index=True)
+    queries_dataset = pd.concat(
+        [queries_dataset, queries_dataset_copy, queries_dataset_copy_2], axis=0, ignore_index=True
+    )
 
     # Shuffle the combined dataframe to randomize the order of entries
     queries_dataset = queries_dataset.sample(frac=1, random_state=42).reset_index(drop=True)
 
     return queries_dataset
 
-def generate_contradictory_answer_llm_approach(document: str, question: str, prompt: str, device: torch.device, 
-tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset: bool = False, for_wow_dataset: bool = False, document_language=None, query_language=None) -> str:
+
+def generate_contradictory_answer_llm_approach(
+    document: str,
+    question: str,
+    prompt: str,
+    device: torch.device,
+    tokenizer: AutoTokenizer,
+    model: AutoModelForCausalLM,
+    for_fever_dataset: bool = False,
+    for_wow_dataset: bool = False,
+    document_language=None,
+    query_language=None,
+) -> str:
     """
     Generates a contradictory answer using a language model approach based on the provided document and question.
 
@@ -559,22 +588,28 @@ tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset: bool =
     # Construct the initial part of the prompt without the document based on the dataset type
     prompt_without_document = prompt + "Example " + str(prompt.count("Example") + 1) + ":\n"
     if for_fever_dataset:
-        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): \nIncorrect Answer ({query_language}): "
+        prompt_without_document += (
+            f"Document ({document_language}): \nStatement ({query_language}): \nIncorrect Answer ({query_language}): "
+        )
     elif for_wow_dataset:
-        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): \nIncorrect Response ({query_language}): "
+        prompt_without_document += (
+            f"Document ({document_language}): \nDialogue ({query_language}): \nIncorrect Response ({query_language}): "
+        )
     else:
-        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): \nIncorrect Answer ({query_language}): "
+        prompt_without_document += (
+            f"Document ({document_language}): \nQuestion ({query_language}): \nIncorrect Answer ({query_language}): "
+        )
 
     # Calculate the token lengths for the prompt, document, and question
-    prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors='pt').to(device).shape[1]
-    document_length = tokenizer.encode(document, return_tensors='pt').to(device).shape[1]
-    question_length = tokenizer.encode(question, return_tensors='pt').to(device).shape[1]
+    prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors="pt").to(device).shape[1]
+    document_length = tokenizer.encode(document, return_tensors="pt").to(device).shape[1]
+    question_length = tokenizer.encode(question, return_tensors="pt").to(device).shape[1]
 
     # Check if the total length exceeds the model's maximum input size and truncate if necessary
     if prompt_tokens_length + document_length + question_length + 100 >= 2048:
         reduction_length = prompt_tokens_length + question_length + 100
-        encoded_input = tokenizer(document, max_length=2048 - reduction_length, truncation=True, return_tensors='pt')
-        truncated_document = tokenizer.decode(encoded_input['input_ids'][0][:2048 - reduction_length]) 
+        encoded_input = tokenizer(document, max_length=2048 - reduction_length, truncation=True, return_tensors="pt")
+        truncated_document = tokenizer.decode(encoded_input["input_ids"][0][: 2048 - reduction_length])
         document = truncated_document.replace("</s>", "")
 
     # Append the document and question to the prompt
@@ -582,36 +617,42 @@ tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset: bool =
     prompt += f"Document ({document_language}): " + document + "\n"
     if for_fever_dataset:
         prompt += f"Statement ({query_language}): " + question + "\n"
-        prompt += f"Incorrect Answer ({query_language}): " 
+        prompt += f"Incorrect Answer ({query_language}): "
     elif for_wow_dataset:
         prompt += f"Dialogue ({query_language}): " + question + "\n"
-        prompt += f"Incorrect Response ({query_language}): " 
+        prompt += f"Incorrect Response ({query_language}): "
     else:
         prompt += f"Question ({query_language}): " + question + "\n"
-        prompt += f"Incorrect Answer ({query_language}): " 
+        prompt += f"Incorrect Answer ({query_language}): "
 
     # Encode the complete prompt
-    input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
+    input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors="pt").to(device)
 
     # Check for encoding issues and generate the answer
     if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
         print("Length of problematic input ids: " + str(input_ids.shape))
-        print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+        print("Length of problematic document: " + str(len(encoded_input["input_ids"][0])))
         assert False
 
-    outputs = model.generate(
-        input_ids=input_ids,
-        max_length=256,
-        do_sample=True,
-        top_p=1.0,
-        num_return_sequences=1)
+    outputs = model.generate(input_ids=input_ids, max_length=256, do_sample=True, top_p=1.0, num_return_sequences=1)
 
     query = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     return query
 
-def generate_wrong_language_answer_llm_approach(document: str, question: str, prompt: str, length_of_fewshot_prompt: int, 
-device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for_fever_dataset=False, for_wow_dataset=False, document_language=None, query_language=None, second_language=None) -> str:
+
+def generate_wrong_language_answer_llm_approach(
+    document: str,
+    question: str,
+    prompt: str,
+    length_of_fewshot_prompt: int,
+    device: torch.device,
+    tokenizer: AutoTokenizer,
+    model: AutoModelForCausalLM,
+    document_language=None,
+    query_language=None,
+    second_language=None,
+) -> str:
     """
     Generates an answer using a language model based on the provided document and question.
 
@@ -640,74 +681,60 @@ device: torch.device, tokenizer: AutoTokenizer, model: AutoModelForCausalLM, for
 
     # Construct the prompt without the document based on the dataset type
     prompt_without_document = prompt + "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
-    if for_fever_dataset:
-        prompt_without_document += f"Document ({document_language}): \nStatement ({query_language}): \nAnswer ({answer_language}): "
-    elif for_wow_dataset:
-        prompt_without_document += f"Document ({document_language}): \nDialogue ({query_language}): \nResponse ({answer_language}): "
-    else:
-        prompt_without_document += f"Document ({document_language}): \nQuestion ({query_language}): \nAnswer ({answer_language}): "
+    prompt_without_document += (
+        f"Document ({document_language}): \nQuestion ({query_language}): \nAnswer ({answer_language}): "
+    )
 
     # Calculate the token lengths for the prompt, document, and question
-    prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors='pt').to(device).shape[1]
-    document_length = tokenizer.encode(document, return_tensors='pt').to(device).shape[1]
-    question_length = tokenizer.encode(question, return_tensors='pt').to(device).shape[1]
+    prompt_tokens_length = tokenizer.encode(prompt_without_document, return_tensors="pt").to(device).shape[1]
+    document_length = tokenizer.encode(document, return_tensors="pt").to(device).shape[1]
+    question_length = tokenizer.encode(question, return_tensors="pt").to(device).shape[1]
 
     # Check if the total length exceeds the model's maximum input size and truncate if necessary
     if prompt_tokens_length + document_length + question_length + 100 >= 2048:
         reduction_length = prompt_tokens_length + question_length + 100
-        encoded_input = tokenizer(document, max_length=2048 - reduction_length, truncation=True, return_tensors='pt')
-        truncated_document = tokenizer.decode(encoded_input['input_ids'][0][:2048 - reduction_length]) 
+        encoded_input = tokenizer(document, max_length=2048 - reduction_length, truncation=True, return_tensors="pt")
+        truncated_document = tokenizer.decode(encoded_input["input_ids"][0][: 2048 - reduction_length])
         document = truncated_document.replace("</s>", "")
 
     # Append the document and question to the prompt
     prompt += "Example " + str(length_of_fewshot_prompt + 1) + ":\n"
     prompt += f"Document ({document_language}): " + document + "\n"
-    if for_fever_dataset:
-        prompt += f"Statement ({query_language}): " + question + "\n"
-        prompt += f"Answer ({answer_language}): "
-    elif for_wow_dataset:
-        prompt += f"Dialogue ({query_language}): " + question + "\n"
-        prompt += f"Response ({answer_language}): "
-    else:
-        prompt += f"Question ({query_language}): " + question + "\n"
-        prompt += f"Answer ({answer_language}): "
+    prompt += f"Question ({query_language}): " + question + "\n"
+    prompt += f"Answer ({answer_language}): "
 
     # Encode the complete prompt
     if model.config.model_type == "cohere":
         prompt = [{"role": "user", "content": prompt}]
 
-        input_ids = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_promt=True, return_tensors="pt").to(model.device)
+        input_ids = tokenizer.apply_chat_template(
+            prompt, tokenize=True, add_generation_promt=True, return_tensors="pt"
+        ).to(model.device)
         prompt_len = len(input_ids[0])
         # input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
 
         # Check for encoding issues and generate the answer
         if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
             print("Length of problematic input ids: " + str(input_ids.shape))
-            print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
+            print("Length of problematic document: " + str(len(encoded_input["input_ids"][0])))
             assert False
         outputs = model.generate(
-            input_ids=input_ids,
-            max_new_tokens=256,
-            do_sample=True,
-            top_p=0.05,
-            num_return_sequences=1)
+            input_ids=input_ids, max_new_tokens=256, do_sample=True, top_p=0.05, num_return_sequences=1
+        )
 
         answer = tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
     else:
-            input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors='pt').to(device)
+        input_ids = tokenizer.encode(prompt, max_length=2048, truncation=True, return_tensors="pt").to(device)
 
-            # Check for encoding issues and generate the answer
-            if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
-                print("Length of problematic input ids: " + str(input_ids.shape))
-                print("Length of problematic document: " + str(len(encoded_input['input_ids'][0])))
-                assert False
-            outputs = model.generate(
-                input_ids=input_ids,
-                max_length=256,
-                do_sample=True,
-                top_p=0.05,
-                num_return_sequences=1)
+        # Check for encoding issues and generate the answer
+        if input_ids.shape[0] != 1 or input_ids.shape[1] >= 2048:
+            print("Length of problematic input ids: " + str(input_ids.shape))
+            print("Length of problematic document: " + str(len(encoded_input["input_ids"][0])))
+            assert False
+        outputs = model.generate(
+            input_ids=input_ids, max_length=256, do_sample=True, top_p=0.05, num_return_sequences=1
+        )
 
-            answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
+        answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
     return answer

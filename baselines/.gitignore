@@ -4,5 +4,5 @@
 !.gitignore
 
 !cora.py
-!cora_xorqa_ja_preds.tsv
-!results_cora_xorqa.json
+!*_preds.tsv
+!results_*.json

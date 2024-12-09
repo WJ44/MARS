@@ -1,0 +1,7 @@
+# Ignore everything in this directory
+*
+# Except this file
+!.gitignore
+!*_few_shot_*.tsv
+!synthetic_queries_*.tsv
+!mlqa_index_*.json

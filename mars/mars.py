@@ -48,24 +48,12 @@ class MARS:
             "evaluation_datasets": (list, None),  # Required parameter with no default value
             "labels": (list, None),  # Required parameter with no default value
             "checkpoints": (list, None),  # Required parameter with no default value
-            "few_shot_examples_filepath": (str, "None"),  # Optional with default
             "gold_label_paths": (list, ["None"]),  # Optional with default
-            "rag_type": (str, "question_answering"),  # Optional with default
-            "model_choice": (str, "microsoft/deberta-v3-large"),  # Optional with default
-            "llm_judge": (str, "None"),  # Optional with default
+            "model_choice": (str, "microsoft/mdeberta-v3-base"),  # Optional with default
             "assigned_batch_size": (int, 1),  # Optional with default
             "number_of_labels": (int, 2),  # Optional with default
             "alpha": (int, 0.05),  # Optional with default
-            "num_trials": (int, 1000),  # Optional with default
-            "vllm": (bool, False),  # Optional with default
-            "azure_openai_config": (dict, None),  # Optional with default
-            "host_url": (str, "http://0.0.0.0:8000/v1"),  # Optional with default
-            "request_delay": (int, 0),  # Optional with default
-            "debug_mode": (bool, False),  # Optional with default
-            "machine_label_llm_model": (str, "None"),  # Optional with default
-            "gold_machine_label_path": (str, "None"),  # Optional with default
             "prediction_filepaths": (list, ["None"]),  # Optional with default
-            "azure_openai_config": (dict, None),  # Optional with default
         },
     }
 

@@ -1,45 +1,46 @@
-import torch.nn as nn
-from transformers import (
-    T5Tokenizer,
-    T5EncoderModel,
-    T5ForConditionalGeneration,
-    BertModel,
-    AutoTokenizer,
-    AutoModel,
-    GPT2Tokenizer,
-    TrainingArguments,
-    get_scheduler,
-    AutoModelForCausalLM,
-    AutoConfig,
-    AutoModelForSequenceClassification,
-    MptForSequenceClassification,
-)
-import sys
-import pandas as pd
-import numpy as np
-import csv
+import argparse
 import ast
-import datasets
-import evaluate
-import pyarrow as pa
-import pyarrow.dataset as ds
-from torch.optim import Adam
-from torch.utils.data import DataLoader
-import torch
-from tqdm.auto import tqdm
-import statistics
-import time
-import subprocess as sp
-import os
-from sklearn.model_selection import train_test_split
+import csv
 import json
+import os
 import random
 import re
-import scipy.stats as stats
-import argparse
-import openai
-from tqdm import tqdm
+import statistics
 import subprocess
+import subprocess as sp
+import sys
+import time
+
+import datasets
+import evaluate
+import numpy as np
+import openai
+import pandas as pd
+import pyarrow as pa
+import pyarrow.dataset as ds
+import scipy.stats as stats
+import torch
+import torch.nn as nn
+from sklearn.model_selection import train_test_split
+from torch.optim import Adam
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from tqdm.auto import tqdm
+from transformers import (
+    AutoConfig,
+    AutoModel,
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    BertModel,
+    GPT2Tokenizer,
+    MptForSequenceClassification,
+    T5EncoderModel,
+    T5ForConditionalGeneration,
+    T5Tokenizer,
+    TrainingArguments,
+    get_scheduler,
+)
 
 tqdm.pandas()
 
@@ -53,26 +54,25 @@ os.environ["PYTHONHASHSEED"] = str(random_state)
 os.environ["HUGGINGFACE_HUB_DISABLE_DOWNLOAD_PROGRESS"] = "1"
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 
-from RAG_Automatic_Evaluation.Evaluation_Functions import (
+from mars.RAG_Automatic_Evaluation.Evaluation_Functions import (
     calculate_accuracy,
-    few_shot_answer_faithfulness_scoring_azure,
-    few_shot_answer_relevance_scoring_azure,
-    few_shot_context_relevance_scoring,
     few_shot_answer_faithfulness_scoring,
-    few_shot_answer_relevance_scoring,
-    few_shot_context_relevance_scoring_azure,
-    few_shot_context_relevance_scoring_togetherai,
-    few_shot_answer_faithfulness_scoring_togetherai,
-    few_shot_answer_relevance_scoring_togetherai,
-    few_shot_context_relevance_scoring_claude,
+    few_shot_answer_faithfulness_scoring_azure,
     few_shot_answer_faithfulness_scoring_claude,
-    few_shot_answer_relevance_scoring_claude,
-    few_shot_context_relevance_scoring_vllm,
-    few_shot_answer_relevance_scoring_vllm,
+    few_shot_answer_faithfulness_scoring_togetherai,
     few_shot_answer_faithfulness_scoring_vllm,
+    few_shot_answer_relevance_scoring,
+    few_shot_answer_relevance_scoring_azure,
+    few_shot_answer_relevance_scoring_claude,
+    few_shot_answer_relevance_scoring_togetherai,
+    few_shot_answer_relevance_scoring_vllm,
+    few_shot_context_relevance_scoring,
+    few_shot_context_relevance_scoring_azure,
+    few_shot_context_relevance_scoring_claude,
+    few_shot_context_relevance_scoring_togetherai,
+    few_shot_context_relevance_scoring_vllm,
 )
-
-from RAG_Automatic_Evaluation.ppi import pp_mean_iid_asymptotic
+from mars.RAG_Automatic_Evaluation.ppi import pp_mean_iid_asymptotic
 
 
 class CustomBERTModel(nn.Module):

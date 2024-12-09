@@ -1,13 +1,17 @@
 import os
-from RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import begin
-from RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import filter_dataset
-from RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import preprocess_data
-from RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import load_api_model
-from RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import load_tokenizer_and_model
-from RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import evaluate_model
-from RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import post_process_predictions
-from RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import evaluate_and_scoring_data
+
 import torch
+
+from .RAG_Automatic_Evaluation.LLMJudge_RAG_Compared_Scoring import (
+    begin,
+    evaluate_and_scoring_data,
+    evaluate_model,
+    filter_dataset,
+    load_api_model,
+    load_tokenizer_and_model,
+    post_process_predictions,
+    preprocess_data,
+)
 
 machine_label_system_prompt = (
     "Given the following question and document, you must analyze the provided document "

@@ -1,6 +1,6 @@
-from synthetic_generator import synthetic_generator_config
-from binary_classifier import binary_classifer_config
-from rag_scoring import rag_scoring_config
+from .binary_classifier import binary_classifer_config
+from .rag_scoring import rag_scoring_config
+from .synthetic_generator import synthetic_generator_config
 
 
 class MARS:
@@ -35,7 +35,7 @@ class MARS:
             "learning_rate": (float, None),  # Required parameter with no default value
             "training_dataset_path": (str, "None"),  # Optional with default
             "validation_dataset_path": (str, "None"),  # Optional with default
-            "model_choice": (str, "microsoft/deberta-v3-large"),  # Optional with default
+            "model_choice": (str, "microsoft/mdeberta-v3-base"),  # Optional with default
             "validation_set_scoring": (bool, True),  # Optional with default
             "assigned_batch_size": (int, REQUIRED_BUT_HAS_DEFAULT, 1),  # Default is 1
             "gradient_accumulation_multiplier": (int, REQUIRED_BUT_HAS_DEFAULT, 32),  # Default is 32

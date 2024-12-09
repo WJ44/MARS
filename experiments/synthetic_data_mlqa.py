@@ -1,6 +1,5 @@
 from mars import MARS
 
-
 synth_config = {
     "document_filepaths": ["multilingual_data/mlqa_(de)_test_en_en.tsv"],
     "few_shot_prompt_filenames": ["multilingual_data/mlqa_(de)_test_few_shot_de_de.tsv"],

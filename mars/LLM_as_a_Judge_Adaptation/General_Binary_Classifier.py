@@ -1,49 +1,43 @@
 # General_binary_classifier.py
 
-import os
-import re
-import ast
-import json
-import time
-import random
-import argparse
-import statistics
-import warnings
-import subprocess as sp
 import datetime
+import os
+import random
+import re
+import subprocess as sp
+import time
+import warnings
 
+import datasets
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-import pyarrow.dataset as ds
-
 import torch
 import torch.nn as nn
+from datasets import load_metric
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-
-from sklearn.model_selection import train_test_split
-
-from tqdm import tqdm, tqdm_pandas
+from tqdm import tqdm
 from tqdm.auto import tqdm
-
 from transformers import (
-    PreTrainedTokenizer, T5Tokenizer, T5EncoderModel, T5ForConditionalGeneration,
-    BertModel, AutoTokenizer, AutoModel, GPT2Tokenizer,
-    TrainingArguments, get_scheduler,
-    AutoModelForCausalLM, AutoConfig, AutoModelForSequenceClassification
+    AutoConfig,
+    AutoModel,
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    PreTrainedTokenizer,
+    get_scheduler,
 )
 
-import datasets
-from datasets import load_metric
-
 warnings.filterwarnings(
-    "ignore", 
+    "ignore",
     message=(
         "The sentencepiece tokenizer that you are converting to a fast tokenizer "
         "uses the byte fallback option which is not implemented in the fast tokenizers."
-    )
+    ),
 )
+
+
 def combine_query_document(query: str, document: str = None, answer: str = None) -> str:
     """
     Combines a query and a document into a single string, optionally including an answer.
@@ -58,13 +52,13 @@ def combine_query_document(query: str, document: str = None, answer: str = None)
     """
     # Clean the document by removing extra newlines, carriage returns, and tabs
     if document:
-        cleaned_document = re.sub(r'\n+', '\n', document.replace("\r", " ").replace("\t", " ")).strip()
+        cleaned_document = re.sub(r"\n+", "\n", document.replace("\r", " ").replace("\t", " ")).strip()
         cleaned_document = cleaned_document.replace("=", " ").replace("-", " ")
-        cleaned_document = re.sub(r'\s+', ' ', cleaned_document).strip()
-        cleaned_document = " ".join(cleaned_document.split(" ")[:512]) #TODO does not work for Japanese
+        cleaned_document = re.sub(r"\s+", " ", cleaned_document).strip()
+        cleaned_document = " ".join(cleaned_document.split(" ")[:512])  # TODO does not work for Japanese
 
     # Truncate the query if it is too long
-    if len(query.split(" ")) > 100: # TODO does not work for Japanese
+    if len(query.split(" ")) > 100:  # TODO does not work for Japanese
         query = " ".join(query.split(" ")[:30])
 
     # Combine query and cleaned document, optionally including the answer
@@ -76,42 +70,12 @@ def combine_query_document(query: str, document: str = None, answer: str = None)
         try:
             return query + " | " + cleaned_document + " | " + answer
         except Exception as e:
-            breakpoint()
             print("Error with combine_query_document")
             print("Query: " + str(query))
             print("Cleaned Document: " + str(cleaned_document))
             print("Answer: " + str(answer))
             return str(query) + " | " + str(cleaned_document) + " | " + str(answer)
 
-def format_text_for_fine_tuning_content_relevance_sequence_classification(question: str, document: str) -> str:
-    """
-    Formats text for fine-tuning content relevance sequence classification.
-
-    Parameters:
-    question (str): The question string.
-    document (str): The document string.
-
-    Returns:
-    str: A formatted string containing the instruction, question, and cleaned document.
-    """
-    instruction = (
-        "You are an expert judge for evaluating question answering systems. "
-        "Given the following question and document, you must analyze the provided document and determine whether it is sufficient for answering the question. \n\n"
-    )
-
-    # Clean the document by removing extra newlines, carriage returns, and tabs
-    cleaned_document = re.sub(r'\n+', '\n', document.replace("\r", " ").replace("\t", " ")).strip()
-    cleaned_document = cleaned_document.replace("=", " ").replace("-", " ")
-    cleaned_document = re.sub(r'\s+', ' ', cleaned_document).strip()
-    cleaned_document = " ".join(cleaned_document.split(" ")[:512]) #TODO does not work for Japanese
-
-    # Construct the instruction string
-    instruction += "### Instruction:\n"
-    instruction += f"Question: {question}\n"
-    instruction += f"Document: {cleaned_document}\n"
-    instruction += "### Response:\n"
-
-    return instruction
 
 def set_random_seed(seed: int):
     """
@@ -123,21 +87,8 @@ def set_random_seed(seed: int):
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
 
-def get_gpu_memory() -> list:
-    """
-    Retrieves the free GPU memory for each GPU available on the system.
-
-    This function uses the `nvidia-smi` command to query the free memory of each GPU and returns a list of free memory values.
-
-    Returns:
-    list: A list of integers representing the free memory (in MiB) for each GPU.
-    """
-    command = "nvidia-smi --query-gpu=memory.free --format=csv"
-    memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
-    memory_free_values = [int(x.split()[0]) for x in memory_free_info]
-    return memory_free_values
 
 class CustomBERTModel(nn.Module):
     def __init__(self, number_of_labels: int, model_choice: str):
@@ -151,30 +102,7 @@ class CustomBERTModel(nn.Module):
         self.model_choice = model_choice
         super(CustomBERTModel, self).__init__()
 
-        if model_choice in ["mosaicml/mpt-7b-instruct", "mosaicml/mpt-7b"]:
-            config = AutoConfig.from_pretrained(model_choice, trust_remote_code=True)
-            config.attn_config['attn_impl'] = 'triton'  # Use triton-based FlashAttention
-            config.max_seq_len = max_token_length
-
-            model_encoding = AutoModelForCausalLM.from_pretrained(
-                model_choice,
-                config=config,
-                torch_dtype=torch.bfloat16,
-                trust_remote_code=True,
-                use_auth_token=True
-            )
-            embedding_size = 4096
-            self.encoderModel = model_encoding.transformer
-
-        elif model_choice in ['mosaicml/mpt-1b-redpajama-200b']:
-            model_encoding = MptForSequenceClassification.from_pretrained(
-                "mosaicml/mpt-1b-redpajama-200b", 
-                trust_remote_code=True
-            )
-            embedding_size = 2048
-            self.encoderModel = model_encoding
-
-        elif model_choice in ["google/t5-large-lm-adapt", "google/t5-xl-lm-adapt"]:
+        if model_choice in ["google/t5-large-lm-adapt", "google/t5-xl-lm-adapt"]:
             model_encoding = AutoModelForSequenceClassification.from_pretrained(model_choice)
             embedding_size = 1024
             self.encoderModel = model_encoding
@@ -188,18 +116,18 @@ class CustomBERTModel(nn.Module):
             model_encoding = AutoModel.from_pretrained(model_choice)
             embedding_size = 1536
             self.encoderModel = model_encoding
-            
+
         elif "electra" in model_choice.lower():
             config = AutoConfig.from_pretrained(model_choice)
             model_encoding = AutoModel.from_pretrained(model_choice)
             embedding_size = config.hidden_size
             self.encoderModel = model_encoding
-        
-        elif model_choice in ["meta-llama/Meta-Llama-3-70B"]: 
-            model_encoding = AutoModelForCausalLM.from_pretrained(model_choice) 
+
+        elif model_choice in ["meta-llama/Meta-Llama-3-70B"]:
+            model_encoding = AutoModelForCausalLM.from_pretrained(model_choice)
             embedding_size = 8192
             self.encoderModel = model_encoding
-            
+
         elif model_choice in ["microsoft/deberta-v3-xsmall"]:
             model_encoding = AutoModel.from_pretrained(model_choice)
             embedding_size = 384
@@ -210,14 +138,16 @@ class CustomBERTModel(nn.Module):
             embedding_size = 768
             self.encoderModel = model_encoding
 
-        self.classifier = nn.Sequential(
-            nn.Linear(embedding_size, 256),
-            nn.Linear(256, number_of_labels)
-        )
+        self.classifier = nn.Sequential(nn.Linear(embedding_size, 256), nn.Linear(256, number_of_labels))
         self.embedding_size = embedding_size
 
-    def forward(self, ids: torch.Tensor, mask: torch.Tensor, labels: torch.Tensor = None, 
-    decoder_input_ids: torch.Tensor = None) -> torch.Tensor:
+    def forward(
+        self,
+        ids: torch.Tensor,
+        mask: torch.Tensor,
+        labels: torch.Tensor = None,
+        decoder_input_ids: torch.Tensor = None,
+    ) -> torch.Tensor:
         """
         Perform a forward pass through the model.
 
@@ -234,10 +164,15 @@ class CustomBERTModel(nn.Module):
         model_choice = self.model_choice
 
         # Check if the model choice is one of the specified models
-        if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt", "mosaicml/mpt-1b-redpajama-200b"]:
+        if model_choice in [
+            "t5-small",
+            "google/t5-xl-lm-adapt",
+            "google/t5-large-lm-adapt",
+            "mosaicml/mpt-1b-redpajama-200b",
+        ]:
             # Perform a forward pass for the specified models
             total_output = self.encoderModel(input_ids=ids, attention_mask=mask)
-            return total_output['logits']
+            return total_output["logits"]
 
         elif "electra" in self.model_choice.lower():
             outputs = self.encoderModel(input_ids=ids, attention_mask=mask)
@@ -247,7 +182,7 @@ class CustomBERTModel(nn.Module):
         else:
             # Perform a forward pass for other models
             total_output = self.encoderModel(ids, attention_mask=mask)
-            sequence_output = total_output['last_hidden_state']
+            sequence_output = total_output["last_hidden_state"]
 
             # Format the last hidden state and pass it through the classifier
             last_hidden_state_formatted = sequence_output[:, 0, :].view(-1, self.embedding_size)
@@ -255,13 +190,14 @@ class CustomBERTModel(nn.Module):
 
             return linear2_output
 
+
 def tokenize_function(tokenizer: AutoTokenizer, examples: dict) -> dict:
     """
     Tokenizes the input examples using the provided tokenizer.
 
     Parameters:
     tokenizer (AutoTokenizer): The tokenizer to use for tokenizing the examples.
-    examples (dict): A dictionary containing the text to be tokenized. 
+    examples (dict): A dictionary containing the text to be tokenized.
                      It should have a key "text" with the corresponding text data.
 
     Returns:
@@ -269,37 +205,6 @@ def tokenize_function(tokenizer: AutoTokenizer, examples: dict) -> dict:
     """
     return tokenizer(examples["text"], padding="max_length", truncation=True)
 
-def checkpoints(classification_datasets: list, model_choice: str) -> None:
-    """
-    Creates necessary checkpoint directories for the given classification datasets and model choice.
-
-    Parameters:
-    classification_datasets (list): A list of dataset names for which checkpoints need to be created.
-    model_choice (str): The model choice string used to determine the folder structure.
-
-    Returns:
-    None
-    """
-    checkpoints_folder_path = "checkpoints/"
-    
-    # Create the main checkpoints directory if it doesn't exist
-    if not os.path.isdir(checkpoints_folder_path):
-        os.mkdir(checkpoints_folder_path)
-
-    # Create a directory for the specific model choice
-    dataset_folder_path = os.path.join(checkpoints_folder_path, model_choice.replace("/", "-"))
-    if not os.path.isdir(dataset_folder_path):
-        print(f"Creating folder: {dataset_folder_path}")
-        os.mkdir(dataset_folder_path)
-
-    # Create directories for each dataset within the model choice directory
-    for dataset in classification_datasets:
-        dataset_path = os.path.join(dataset_folder_path, dataset.replace("../", "").replace("/", "-"))
-        try:
-            os.mkdir(dataset_path)
-        except FileExistsError:
-            print("Already exists")
-            print(dataset_path)
 
 def load_model(model_choice: str) -> tuple[AutoTokenizer, int]:
     """
@@ -316,8 +221,9 @@ def load_model(model_choice: str) -> tuple[AutoTokenizer, int]:
     # max_token_length = 2048
     max_token_length = 512 if "electra" in model_choice.lower() else 2048
     tokenizer = AutoTokenizer.from_pretrained(model_choice, model_max_length=max_token_length)
-    
+
     return tokenizer, max_token_length
+
 
 def prepare_and_clean_data(params: dict) -> tuple[str, int]:
     """
@@ -374,7 +280,7 @@ def prepare_and_clean_data(params: dict) -> tuple[str, int]:
     checkpoint_path = os.path.join(
         "checkpoints",
         model_choice.replace("/", "-"),
-        f"{label_column}_{os.path.basename(validation_set).replace('.tsv', '')}_{current_datetime}.pt"
+        f"{label_column}_{os.path.basename(validation_set).replace('.tsv', '')}_{current_datetime}.pt",
     )
 
     # Record the start time of execution
@@ -384,7 +290,7 @@ def prepare_and_clean_data(params: dict) -> tuple[str, int]:
     print("Dataset: " + dataset)
     print("Model: " + model_choice)
     print("Test Set Selection: " + validation_set)
-    print('Learning Rate: ' + str(chosen_learning_rate))
+    print("Learning Rate: " + str(chosen_learning_rate))
     print("Checkpoint Path: " + checkpoint_path)
     print("Patience: " + str(patience_value))
     print("Number of Epochs: " + str(num_epochs))
@@ -392,7 +298,10 @@ def prepare_and_clean_data(params: dict) -> tuple[str, int]:
 
     return checkpoint_path, patience_value
 
-def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoTokenizer, max_token_length: int) -> pd.DataFrame:
+
+def analyze_and_report_data(
+    dataset: str, label_column: str, tokenizer: AutoTokenizer, max_token_length: int
+) -> pd.DataFrame:
     """
     Analyzes and reports data from a given dataset.
 
@@ -410,15 +319,17 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
 
     # If the dataset is reformatted, rename columns accordingly
     if "nq_reformatted" in dataset:
-        synth_queries['synthetic_query'] = synth_queries['Query']
-        synth_queries['generated_answer'] = synth_queries['Answer']
-        synth_queries['document'] = synth_queries['Document']
+        synth_queries["synthetic_query"] = synth_queries["Query"]
+        synth_queries["generated_answer"] = synth_queries["Answer"]
+        synth_queries["document"] = synth_queries["Document"]
 
     print("Preparing train set for " + label_column)
 
     # Print initial count
     print(f"Initial count: {len(synth_queries)}")
-    print(f"Context_Relevance_Label counts before ANY filtering: Yes - {synth_queries[synth_queries['Context_Relevance_Label'] == 'Yes'].shape[0]}, No - {synth_queries[synth_queries['Context_Relevance_Label'] == 'No'].shape[0]}")
+    print(
+        f"Context_Relevance_Label counts before ANY filtering: Yes - {synth_queries[synth_queries['Context_Relevance_Label'] == 'Yes'].shape[0]}, No - {synth_queries[synth_queries['Context_Relevance_Label'] == 'No'].shape[0]}"
+    )
 
     # Filter out rows with NaN values in the specified columns
     synth_queries = synth_queries[synth_queries[label_column] != "NaN"]
@@ -427,7 +338,7 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
     synth_queries = synth_queries[synth_queries[label_column].notna()]
 
     if "Context" not in label_column:
-        synth_queries = synth_queries[synth_queries['generated_answer'].notna()]
+        synth_queries = synth_queries[synth_queries["generated_answer"].notna()]
 
     # Print count after initial filtering
     print(f"Count after initial filtering: {len(synth_queries)}")
@@ -436,12 +347,16 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
     synth_queries = synth_queries.sample(n=len(synth_queries), random_state=42)
 
     # Print counts of Answer_Relevance_Label before any further filtering
-    print(f"{label_column} counts before filtering: Yes - {synth_queries[synth_queries[label_column] == 'Yes'].shape[0]}, No - {synth_queries[synth_queries[label_column] == 'No'].shape[0]}")
+    print(
+        f"{label_column} counts before filtering: Yes - {synth_queries[synth_queries[label_column] == 'Yes'].shape[0]}, No - {synth_queries[synth_queries[label_column] == 'No'].shape[0]}"
+    )
 
     # Combine query and document (and generated answer if applicable) into a single text field
     if "Context" in label_column:
         synth_queries["concat_text"] = [
-            combine_query_document(query=synth_queries.iloc[i]['synthetic_query'], document=synth_queries.iloc[i]['document'])
+            combine_query_document(
+                query=synth_queries.iloc[i]["synthetic_query"], document=synth_queries.iloc[i]["document"]
+            )
             for i in range(len(synth_queries))
         ]
 
@@ -449,8 +364,8 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
         print(f"Count before filtering duplicates for context relevance: {len(synth_queries)}")
 
         # Count and print Yes and No labels before filtering
-        yes_count = synth_queries[synth_queries[label_column] == 'Yes'].shape[0]
-        no_count = synth_queries[synth_queries[label_column] == 'No'].shape[0]
+        yes_count = synth_queries[synth_queries[label_column] == "Yes"].shape[0]
+        no_count = synth_queries[synth_queries[label_column] == "No"].shape[0]
         print(f"CR - Before filtering - Yes: {yes_count}, No: {no_count}")
 
         # Temporarily remove rows with duplicate query/document pairs for context relevance
@@ -460,13 +375,15 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
         print(f"Count after filtering duplicates for context relevance: {len(synth_queries)}")
     elif "Answer_Relevance" in label_column:
         synth_queries["concat_text"] = [
-            combine_query_document(query=synth_queries.iloc[i]['synthetic_query'], answer=synth_queries.iloc[i]['generated_answer'])
+            combine_query_document(
+                query=synth_queries.iloc[i]["synthetic_query"], answer=synth_queries.iloc[i]["generated_answer"]
+            )
             for i in range(len(synth_queries))
         ]
 
         # Print the count before filtering
         print(f"Count before filtering for answer relevance: {len(synth_queries)}")
-        
+
         # Temporarily remove rows whith duplicate query/answer pairs for answer relevance
         synth_queries = synth_queries.drop_duplicates(subset=["synthetic_query", "generated_answer"])
 
@@ -474,14 +391,16 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
         print(f"Count after filtering for answer relevance: {len(synth_queries)}")
     else:
         synth_queries["concat_text"] = [
-            combine_query_document(query=synth_queries.iloc[i]['synthetic_query'], document=synth_queries.iloc[i]['document'], answer=synth_queries.iloc[i]['generated_answer'])
+            combine_query_document(
+                query=synth_queries.iloc[i]["synthetic_query"],
+                document=synth_queries.iloc[i]["document"],
+                answer=synth_queries.iloc[i]["generated_answer"],
+            )
             for i in range(len(synth_queries))
         ]
 
-
         # Print counts of label before filtering
         print(f"Count before filtering duplicades for {label_column}: {len(synth_queries)}")
-
 
         # Temporarily remove rows whit duplicate query/document/answer pairs
         synth_queries = synth_queries.drop_duplicates(subset=["synthetic_query", "document", "generated_answer"])
@@ -490,12 +409,14 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
         print(f"Count after filtering for {label_column} {len(synth_queries)}")
 
     # Print counts of Answer_Relevance_Label after filtering for context relevance
-    print(f"{label_column} counts after filtering: Yes - {synth_queries[synth_queries[label_column] == 'Yes'].shape[0]}, No - {synth_queries[synth_queries[label_column] == 'No'].shape[0]}")
+    print(
+        f"{label_column} counts after filtering: Yes - {synth_queries[synth_queries[label_column] == 'Yes'].shape[0]}, No - {synth_queries[synth_queries[label_column] == 'No'].shape[0]}"
+    )
 
     # Tokenize the concatenated text and calculate token lengths
-    synth_queries['token_length'] = [
-        len(tokenizer.encode(text, return_tensors='pt')[0])
-        for text in tqdm(synth_queries['concat_text'], desc="Tokenizing")
+    synth_queries["token_length"] = [
+        len(tokenizer.encode(text, return_tensors="pt")[0])
+        for text in tqdm(synth_queries["concat_text"], desc="Tokenizing")
     ]
 
     # Print count before token length filtering
@@ -505,14 +426,17 @@ def analyze_and_report_data(dataset: str, label_column: str, tokenizer: AutoToke
     synth_queries = synth_queries.drop_duplicates(["concat_text"])
 
     # Filter out rows where token length exceeds the maximum allowed token length
-    synth_queries = synth_queries[synth_queries['token_length'] <= max_token_length]
+    synth_queries = synth_queries[synth_queries["token_length"] <= max_token_length]
 
     # Print final count
     print(f"Final count after token length filtering: {len(synth_queries)}")
 
     return synth_queries
 
-def transform_data(synth_queries: pd.DataFrame, validation_set: str, label_column: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+
+def transform_data(
+    synth_queries: pd.DataFrame, validation_set: str, label_column: str
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Transforms the synthetic queries and validation set for training and testing.
 
@@ -529,32 +453,33 @@ def transform_data(synth_queries: pd.DataFrame, validation_set: str, label_colum
 
     print("Preparing test set for " + label_column)
 
-
     # Read and preprocess the validation set
     test_set = pd.read_csv(validation_set, sep="\t")
 
     # Print initial count
     print(f"Initial count: {len(test_set)}")
 
-    test_set['Question'] = test_set['Query']
-    test_set['Document'] = test_set['Document'].str.strip()
+    test_set["Question"] = test_set["Query"]
+    test_set["Document"] = test_set["Document"].str.strip()
     test_set = test_set[test_set["Document"].str.len() > 100]
     test_set = test_set[test_set[label_column].notna()]
 
     print(f"Count after initial filtering: {len(test_set)}")
 
     # Preprocess the training DataFrame
-    train_df['document'] = train_df['document'].astype(str).str.strip()
+    train_df["document"] = train_df["document"].astype(str).str.strip()
     train_df = train_df[train_df["document"].str.len() > 100]
     train_df = train_df[train_df[label_column].notna()]
 
     # Print counts of Answer_Relevance_Label before any further filtering
-    print(f"{label_column} counts before filtering: Yes - {test_set[test_set[label_column] == 1.0].shape[0]}, No - {test_set[test_set[label_column] == 0.0].shape[0]}")
+    print(
+        f"{label_column} counts before filtering: Yes - {test_set[test_set[label_column] == 1.0].shape[0]}, No - {test_set[test_set[label_column] == 0.0].shape[0]}"
+    )
 
     # Combine query and document (and generated answer if applicable) into a single text field
     if "Context" in label_column:
-        test_set['concat_text'] = [
-            combine_query_document(query=test_set.iloc[i]['Question'], document=test_set.iloc[i]['Document'])
+        test_set["concat_text"] = [
+            combine_query_document(query=test_set.iloc[i]["Question"], document=test_set.iloc[i]["Document"])
             for i in range(len(test_set))
         ]
 
@@ -567,8 +492,8 @@ def transform_data(synth_queries: pd.DataFrame, validation_set: str, label_colum
         # Print the count after filtering
         print(f"Count after filtering duplicates for context relevance: {len(test_set)}")
     elif "Answer_Relevance" in label_column:
-        test_set['concat_text'] = [
-            combine_query_document(query=test_set.iloc[i]['Question'], answer=test_set.iloc[i]['Answer'])
+        test_set["concat_text"] = [
+            combine_query_document(query=test_set.iloc[i]["Question"], answer=test_set.iloc[i]["Answer"])
             for i in range(len(test_set))
         ]
 
@@ -581,8 +506,12 @@ def transform_data(synth_queries: pd.DataFrame, validation_set: str, label_colum
         # Print the count after filtering
         print(f"Count after filtering for answer relevance: {len(test_set)}")
     else:
-        test_set['concat_text'] = [
-            combine_query_document(query=test_set.iloc[i]['Question'], document=test_set.iloc[i]['Document'], answer=test_set.iloc[i]['Answer'])
+        test_set["concat_text"] = [
+            combine_query_document(
+                query=test_set.iloc[i]["Question"],
+                document=test_set.iloc[i]["Document"],
+                answer=test_set.iloc[i]["Answer"],
+            )
             for i in range(len(test_set))
         ]
 
@@ -592,12 +521,13 @@ def transform_data(synth_queries: pd.DataFrame, validation_set: str, label_colum
         # Temporarily remove rows with duplicate query/document/answer pairs for context relevance
         test_set = test_set.drop_duplicates(subset=["Question", "Document", "Answer"])
 
-
         # Print the count after filtering
         print(f"Count after filtering for {label_column}: {len(test_set)}")
 
     # Print counts of Answer_Relevance_Label after filtering for context relevance
-    print(f"{label_column} counts after filtering: Yes - {test_set[test_set[label_column] == 1.0].shape[0]}, No - {test_set[test_set[label_column] == 0.0].shape[0]}")
+    print(
+        f"{label_column} counts after filtering: Yes - {test_set[test_set[label_column] == 1.0].shape[0]}, No - {test_set[test_set[label_column] == 0.0].shape[0]}"
+    )
 
     # Remove duplicate rows based on the concatenated text
     train_df = train_df.drop_duplicates(["concat_text"])
@@ -608,20 +538,32 @@ def transform_data(synth_queries: pd.DataFrame, validation_set: str, label_colum
         print("Refining data for Answer_Faithfulness classification!")
         train_df = train_df[train_df["Context_Relevance_Label"].notna()]
         train_df = train_df[train_df["Answer_Faithfulness_Label"].notna()]
-        error_strings = ['answer', 'contrad', 'false', 'information', 'unanswer', 'Answer', 'Contrad', 'False', 'Information', 'Unanswer']
-        train_df['generated_answer'] = train_df['generated_answer'].astype(str)
-        train_df = train_df[~train_df['generated_answer'].str.contains('|'.join(error_strings))]
+        error_strings = [
+            "answer",
+            "contrad",
+            "false",
+            "information",
+            "unanswer",
+            "Answer",
+            "Contrad",
+            "False",
+            "Information",
+            "Unanswer",
+        ]
+        train_df["generated_answer"] = train_df["generated_answer"].astype(str)
+        train_df = train_df[~train_df["generated_answer"].str.contains("|".join(error_strings))]
 
     return train_df, test_set
 
-def split_dataset(train_df: pd.DataFrame, dataset: str, 
-test_set: pd.DataFrame, label_column: str) -> tuple[list[str], list[int], list[str], list[int], list[str], list[int], list[int]]:
+
+def split_dataset(
+    train_df: pd.DataFrame, test_set: pd.DataFrame, label_column: str
+) -> tuple[list[str], list[int], list[str], list[int]]:
     """
     Splits the dataset into training, development, and test sets, and extracts the corresponding labels.
 
     Parameters:
     - train_df (pd.DataFrame): DataFrame containing the training data.
-    - dataset (str): Name of the dataset.
     - test_set (pd.DataFrame): DataFrame containing the test data.
     - label_column (str): The column name used for labeling.
 
@@ -631,45 +573,35 @@ test_set: pd.DataFrame, label_column: str) -> tuple[list[str], list[int], list[s
         - train_set_label (list): List of labels for the training set.
         - dev_set_text (list): List of concatenated text fields for the development set.
         - dev_set_label (list): List of labels for the development set.
-        - test_set_text (list): List of concatenated text fields for the test set.
-        - test_set_label (list): List of labels for the test set.
-        - labels_list (list): Sorted list of unique labels.
     """
-    
     # Conversion dictionary for binary classification
     conversion_dict = {"Yes": 1, "No": 0}
-    
+
     # Extract concatenated text fields for the training set
-    train_set_text = [train_df.iloc[i]['concat_text'] for i in range(len(train_df))]
-    
+    train_set_text = [train_df.iloc[i]["concat_text"] for i in range(len(train_df))]
+
     # Extract labels for the training set
-    if "nq_reformatted" not in dataset:
-        train_set_label = [conversion_dict[train_df.iloc[i][label_column]] for i in range(len(train_df))]
-    else:
-        train_set_label = [int(train_df.iloc[i][label_column]) for i in range(len(train_df))]
-    
+    train_set_label = [conversion_dict[train_df.iloc[i][label_column]] for i in range(len(train_df))]
+
     # Extract concatenated text fields and labels for the development set
-    dev_set_text = [test_set.iloc[i]['concat_text'] for i in range(len(test_set))]
+    dev_set_text = [test_set.iloc[i]["concat_text"] for i in range(len(test_set))]
     dev_set_label = [int(test_set.iloc[i][label_column]) for i in range(len(test_set))]
-    
-    # Extract concatenated text fields and labels for the test set
-    test_set_text = [test_set.iloc[i]['concat_text'] for i in range(len(test_set))]
-    test_set_label = [int(test_set.iloc[i][label_column]) for i in range(len(test_set))]
 
-    # Create a sorted list of unique labels
-    labels_list = sorted(list(set(train_set_label + dev_set_label + test_set_label)))
+    return train_set_text, train_set_label, dev_set_text, dev_set_label
 
-    return train_set_text, train_set_label, dev_set_text, dev_set_label, test_set_text, test_set_label, labels_list
 
 ############################################################
 
-def prepare_dataset(validation_set_scoring: bool, 
-                    train_set_label: list[int], 
-                    train_set_text: list[str], 
-                    dev_set_label: list[int], 
-                    dev_set_text: list[str], 
-                    test_set_label: list[int] = None, 
-                    test_set_text: list[str] = None) -> tuple[pd.DataFrame, datasets.Dataset, datasets.Dataset, datasets.Dataset, pd.DataFrame]:
+
+def prepare_dataset(
+    validation_set_scoring: bool,
+    train_set_label: list[int],
+    train_set_text: list[str],
+    dev_set_label: list[int],
+    dev_set_text: list[str],
+    test_set_label: list[int] = None,
+    test_set_text: list[str] = None,
+) -> tuple[pd.DataFrame, datasets.Dataset, datasets.Dataset, datasets.Dataset, pd.DataFrame]:
     """
     Prepares the dataset for training, validation, and testing by converting them into pandas DataFrames and Arrow tables.
 
@@ -690,38 +622,41 @@ def prepare_dataset(validation_set_scoring: bool,
         - test_dataset_arrow (datasets.Dataset): Arrow table for the test set.
         - test_dataset_pandas (pd.DataFrame): DataFrame for the test set.
     """
-    
+
     if validation_set_scoring:
         # Prepare training dataset
-        training_dataset_pandas = pd.DataFrame({'label': train_set_label, 'text': train_set_text})
+        training_dataset_pandas = pd.DataFrame({"label": train_set_label, "text": train_set_text})
         training_dataset_arrow = datasets.Dataset(pa.Table.from_pandas(training_dataset_pandas))
 
         # Prepare validation dataset
-        validation_dataset_pandas = pd.DataFrame({'label': dev_set_label, 'text': dev_set_text})
+        validation_dataset_pandas = pd.DataFrame({"label": dev_set_label, "text": dev_set_text})
         validation_dataset_arrow = datasets.Dataset(pa.Table.from_pandas(validation_dataset_pandas))
 
         # Prepare test dataset
-        test_dataset_pandas = pd.DataFrame({'label': dev_set_label, 'text': dev_set_text})
+        test_dataset_pandas = pd.DataFrame({"label": dev_set_label, "text": dev_set_text})
         test_dataset_arrow = datasets.Dataset(pa.Table.from_pandas(test_dataset_pandas))
     else:
         # Prepare training dataset
-        training_dataset_pandas = pd.DataFrame({'label': train_set_label, 'text': train_set_text})
+        training_dataset_pandas = pd.DataFrame({"label": train_set_label, "text": train_set_text})
         training_dataset_arrow = datasets.Dataset(pa.Table.from_pandas(training_dataset_pandas))
 
         # Prepare validation dataset
-        validation_dataset_pandas = pd.DataFrame({'label': dev_set_label, 'text': dev_set_text})
+        validation_dataset_pandas = pd.DataFrame({"label": dev_set_label, "text": dev_set_text})
         validation_dataset_arrow = datasets.Dataset(pa.Table.from_pandas(validation_dataset_pandas))
 
         # Prepare test dataset
-        test_dataset_pandas = pd.DataFrame({'label': test_set_label, 'text': test_set_text})
+        test_dataset_pandas = pd.DataFrame({"label": test_set_label, "text": test_set_text})
         test_dataset_arrow = datasets.Dataset(pa.Table.from_pandas(test_dataset_pandas))
 
-    return training_dataset_pandas, training_dataset_arrow, validation_dataset_arrow, test_dataset_arrow, test_dataset_pandas
+    return training_dataset_arrow, validation_dataset_arrow, test_dataset_arrow
 
-def initalize_dataset_for_tokenization(tokenizer: PreTrainedTokenizer, 
-                                      training_dataset_arrow: datasets.Dataset, 
-                                      validation_dataset_arrow: datasets.Dataset, 
-                                      test_dataset_arrow: datasets.Dataset) -> datasets.DatasetDict:
+
+def initalize_dataset_for_tokenization(
+    tokenizer: PreTrainedTokenizer,
+    training_dataset_arrow: datasets.Dataset,
+    validation_dataset_arrow: datasets.Dataset,
+    test_dataset_arrow: datasets.Dataset,
+) -> datasets.DatasetDict:
     """
     Initializes and tokenizes the dataset for training, validation, and testing.
 
@@ -734,29 +669,30 @@ def initalize_dataset_for_tokenization(tokenizer: PreTrainedTokenizer,
     Returns:
     - datasets.DatasetDict: A dictionary containing the tokenized datasets for training, validation, and testing.
     """
-    
+
     # Create a DatasetDict with the provided datasets
-    classification_dataset = datasets.DatasetDict({
-        'train': training_dataset_arrow, 
-        'validation': validation_dataset_arrow, 
-        'test': test_dataset_arrow
-    })
-    
+    classification_dataset = datasets.DatasetDict(
+        {"train": training_dataset_arrow, "validation": validation_dataset_arrow, "test": test_dataset_arrow}
+    )
+
     # Tokenize the datasets
-    tokenized_datasets = classification_dataset.map(lambda examples: tokenize_function(tokenizer, examples), batched=True)
+    tokenized_datasets = classification_dataset.map(
+        lambda examples: tokenize_function(tokenizer, examples), batched=True
+    )
 
     # Remove the 'text' column as it is no longer needed after tokenization
     tokenized_datasets = tokenized_datasets.remove_columns(["text"])
-    
+
     # Rename the 'label' column to 'labels' to match the expected input format for the model
     tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
-    
+
     # Set the format of the datasets to PyTorch tensors
     tokenized_datasets.set_format("torch")
 
     return tokenized_datasets
 
     ############################################################
+
 
 def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[float], list[float], list[float]]:
     """
@@ -780,7 +716,7 @@ def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[
     Returns:
     - tuple: A tuple containing the trained model, average training losses, average validation losses, evaluation dataloader, and inference times.
     """
-    
+
     # Extract parameters from the dictionary
     number_of_runs = params["number_of_runs"]
     tokenized_datasets = params["tokenized_datasets"]
@@ -796,18 +732,15 @@ def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[
     gradient_accumulation_multiplier = params["gradient_accumulation_multiplier"]
 
     # Initialize lists to store metrics
-    micro_averages = []
-    macro_averages = []
     inference_times = []
 
-    for i in range(number_of_runs):
-        run_start = time.time()
+    for _ in range(number_of_runs):
         print("Loading Model")
 
         # Create dataloaders for training, validation, and evaluation
-        train_dataloader = DataLoader(tokenized_datasets['train'], batch_size=assigned_batch_size)
-        validation_dataloader = DataLoader(tokenized_datasets['validation'], batch_size=assigned_batch_size)
-        eval_dataloader = DataLoader(tokenized_datasets['test'], batch_size=assigned_batch_size)
+        train_dataloader = DataLoader(tokenized_datasets["train"], batch_size=assigned_batch_size)
+        validation_dataloader = DataLoader(tokenized_datasets["validation"], batch_size=assigned_batch_size)
+        eval_dataloader = DataLoader(tokenized_datasets["test"], batch_size=assigned_batch_size)
 
         # Initialize the model and move it to the specified device
         model = CustomBERTModel(len(set(train_set_label)), model_choice)
@@ -820,7 +753,10 @@ def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[
         # Calculate the total number of training steps and initialize the learning rate scheduler
         num_training_steps = num_epochs * len(train_dataloader)
         lr_scheduler = get_scheduler(
-            name="linear", optimizer=optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps
+            name="linear",
+            optimizer=optimizer,
+            num_warmup_steps=num_warmup_steps,
+            num_training_steps=num_training_steps,
         )
 
         # Initialize lists to store losses
@@ -830,7 +766,7 @@ def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[
         avg_valid_losses = []
 
         # Import EarlyStopping utility
-        from ares.LLM_as_a_Judge_Adaptation.pytorchtools import EarlyStopping
+        from mars.LLM_as_a_Judge_Adaptation.pytorchtools import EarlyStopping
 
         # Initialize early stopping
         early_stopping = EarlyStopping(patience=patience_value, verbose=True, path=checkpoint_path)
@@ -849,13 +785,16 @@ def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[
             for batch in train_dataloader:
                 # Prepare the batch for the model
                 if model_choice in ["mosaicml/mpt-1b-redpajama-200b"]:
-                    new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].bool().to(device)}
+                    new_batch = {
+                        "ids": batch["input_ids"].to(device),
+                        "mask": batch["attention_mask"].bool().to(device),
+                    }
                 else:
-                    new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].to(device)}
+                    new_batch = {"ids": batch["input_ids"].to(device), "mask": batch["attention_mask"].to(device)}
 
                 # Forward pass
                 outputs = model(**new_batch)
-                loss = criterion(outputs, batch['labels'].to(device))
+                loss = criterion(outputs, batch["labels"].to(device))
                 loss.backward()
 
                 # Gradient accumulation
@@ -864,7 +803,7 @@ def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[
                     optimizer.step()
                     lr_scheduler.step()
                     optimizer.zero_grad()
-                    
+
                 progress_bar.update(1)
                 train_losses.append(loss.item())
 
@@ -874,16 +813,21 @@ def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[
                 with torch.no_grad():
                     # Prepare the batch for the model
                     if model_choice in ["mosaicml/mpt-1b-redpajama-200b"]:
-                        new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].bool().to(device)}
+                        new_batch = {
+                            "ids": batch["input_ids"].to(device),
+                            "mask": batch["attention_mask"].bool().to(device),
+                        }
                     else:
-                        new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].to(device)}
+                        new_batch = {"ids": batch["input_ids"].to(device), "mask": batch["attention_mask"].to(device)}
 
                     if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt"]:
-                        new_batch['decoder_input_ids'] = batch['labels'].reshape(batch['labels'].shape[0], 1).to(device)
+                        new_batch["decoder_input_ids"] = (
+                            batch["labels"].reshape(batch["labels"].shape[0], 1).to(device)
+                        )
 
                     # Forward pass
                     outputs = model(**new_batch)
-                    loss = criterion(outputs, batch['labels'].to(device))
+                    loss = criterion(outputs, batch["labels"].to(device))
                     progress_bar.update(1)
                     valid_losses.append(loss.item())
 
@@ -895,9 +839,11 @@ def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[
 
             # Print epoch summary
             epoch_len = len(str(num_epochs))
-            print_msg = (f'[{epoch:>{epoch_len}}/{num_epochs:>{epoch_len}}] ' +
-                         f'train_loss: {train_loss:.5f} ' +
-                         f'valid_loss: {valid_loss:.5f}')
+            print_msg = (
+                f"[{epoch:>{epoch_len}}/{num_epochs:>{epoch_len}}] "
+                + f"train_loss: {train_loss:.5f} "
+                + f"valid_loss: {valid_loss:.5f}"
+            )
             print(print_msg)
 
             # Reset losses for the next epoch
@@ -908,12 +854,19 @@ def train_and_evaluate_model(params: dict) -> tuple[list[torch.nn.Module], list[
                 print("Early stopping")
                 break
 
-    return model, avg_train_losses, avg_valid_losses, eval_dataloader, inference_times
+    return model, eval_dataloader, inference_times
 
-        ############################################################
+    ############################################################
 
-def evaluate_model(model: torch.nn.Module, model_choice: str, checkpoint_path: str, 
-device: torch.device, eval_dataloader: DataLoader, inference_times: list) -> tuple:
+
+def evaluate_model(
+    model: torch.nn.Module,
+    model_choice: str,
+    checkpoint_path: str,
+    device: torch.device,
+    eval_dataloader: DataLoader,
+    inference_times: list,
+) -> tuple:
     """
     Evaluates the given model on the evaluation dataset.
 
@@ -945,22 +898,22 @@ device: torch.device, eval_dataloader: DataLoader, inference_times: list) -> tup
         with torch.no_grad():
             # Prepare the batch for the model
             if model_choice in ["mosaicml/mpt-1b-redpajama-200b"]:
-                new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].bool().to(device)}
+                new_batch = {"ids": batch["input_ids"].to(device), "mask": batch["attention_mask"].bool().to(device)}
             else:
-                new_batch = {'ids': batch['input_ids'].to(device), 'mask': batch['attention_mask'].to(device)}
+                new_batch = {"ids": batch["input_ids"].to(device), "mask": batch["attention_mask"].to(device)}
 
             if model_choice in ["t5-small", "google/t5-xl-lm-adapt", "google/t5-large-lm-adapt"]:
-                new_batch['decoder_input_ids'] = batch['labels'].reshape(batch['labels'].shape[0], 1).to(device)
+                new_batch["decoder_input_ids"] = batch["labels"].reshape(batch["labels"].shape[0], 1).to(device)
 
             # Forward pass
             outputs = model(**new_batch)
 
             logits = outputs
             predictions = torch.argmax(logits, dim=-1)
-            metric.add_batch(predictions=predictions, references=batch['labels'].to(device))
+            metric.add_batch(predictions=predictions, references=batch["labels"].to(device))
 
             total_predictions = torch.cat((total_predictions, predictions), 0)
-            total_references = torch.cat((total_references, batch['labels'].to(device)), 0)
+            total_references = torch.cat((total_references, batch["labels"].to(device)), 0)
 
             progress_bar.update(1)
 
@@ -970,9 +923,13 @@ device: torch.device, eval_dataloader: DataLoader, inference_times: list) -> tup
 
     return total_predictions, total_references, metric
 
+
 ############################################################
 
-def print_and_save_model(total_predictions: torch.Tensor, total_references: torch.Tensor, checkpoint_path: str, metric) -> None:
+
+def print_and_save_model(
+    total_predictions: torch.Tensor, total_references: torch.Tensor, checkpoint_path: str, metric
+) -> None:
     """
     Prints the shapes of the predictions and references, computes and prints the accuracy and F1 scores,
     and saves the classification checkpoint.
@@ -993,14 +950,14 @@ def print_and_save_model(total_predictions: torch.Tensor, total_references: torc
 
     # Compute and print accuracy
     results = metric.compute(references=total_references, predictions=total_predictions)
-    print("Accuracy for Test Set: " + str(results['accuracy']))
+    print("Accuracy for Test Set: " + str(results["accuracy"]))
 
     # Compute and print F1 scores
     f_1_metric = load_metric("f1", trust_remote_code=True)
-    macro_f_1_results = f_1_metric.compute(average='macro', references=total_references, predictions=total_predictions)
-    print("Macro F1 for Test Set: " + str(macro_f_1_results['f1'] * 100))
-    micro_f_1_results = f_1_metric.compute(average='micro', references=total_references, predictions=total_predictions)
-    print("Micro F1 for Test Set: " + str(micro_f_1_results['f1'] * 100))
+    macro_f_1_results = f_1_metric.compute(average="macro", references=total_references, predictions=total_predictions)
+    print("Macro F1 for Test Set: " + str(macro_f_1_results["f1"] * 100))
+    micro_f_1_results = f_1_metric.compute(average="micro", references=total_references, predictions=total_predictions)
+    print("Micro F1 for Test Set: " + str(micro_f_1_results["f1"] * 100))
 
     # Compute and print positive/negative reference ratio
     positive_ratio = round(total_references.tolist().count(1) / len(total_references.tolist()), 3)

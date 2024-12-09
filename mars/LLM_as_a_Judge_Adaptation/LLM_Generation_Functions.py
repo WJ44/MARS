@@ -5,21 +5,26 @@ import json
 import math
 import random
 import re
-import requests
 import time
+from typing import Union
 
 import numpy as np
+import openai
 import pandas as pd
+import requests
 import torch
 from datasets import Dataset
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
-from typing import Union
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+)
 
-import openai
-from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, BitsAndBytesConfig
-
-from LLM_as_a_Judge_Adaptation.LLM_Synthetic_Generation import (
+from mars.LLM_as_a_Judge_Adaptation.LLM_Synthetic_Generation import (
     generate_synthetic_contradictory_answers_api_approach,
 )
 

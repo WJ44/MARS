@@ -1,25 +1,23 @@
 import json
+import os
 import re
 import sys
-import os
 
 import pandas as pd
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 
-from LLM_as_a_Judge_Adaptation.Filter_Synthetic_Queries import (
+from mars.LLM_as_a_Judge_Adaptation.Filter_Synthetic_Queries import (
     filter_synthetic_queries,
     generate_index,
 )
-from LLM_as_a_Judge_Adaptation.LLM_Generation_Functions import (
+from mars.LLM_as_a_Judge_Adaptation.LLM_Generation_Functions import (
     check_generated_answer,
     generate_answer_llm_approach,
     generate_synthetic_query_llm_approach,
     generate_wrong_language_answer_llm_approach,
 )
-
-import os
 
 pd.set_option("display.max_columns", None)
 pd.set_option("display.max_rows", None)

@@ -1,10 +1,10 @@
-from LLM_as_a_Judge_Adaptation.Generate_Synthetic_Queries_and_Answers import (
-    load_model,
+from .LLM_as_a_Judge_Adaptation.Generate_Synthetic_Queries_and_Answers import (
+    generate_few_shot_prompts,
+    generate_synthetic_data,
+    generate_wrong_language_few_shot_prompts,
     load_documents,
     load_few_shot_prompt,
-    generate_few_shot_prompts,
-    generate_wrong_language_few_shot_prompts,
-    generate_synthetic_data,
+    load_model,
 )
 
 

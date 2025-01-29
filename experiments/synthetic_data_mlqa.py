@@ -2,10 +2,10 @@ from mars import MARS
 
 synth_config = {
     "document_filepaths": ["multilingual_data/mlqa_(de)_test_en_en.tsv"],
-    "few_shot_prompt_filenames": ["multilingual_data/mlqa_(de)_test_few_shot_de_de.tsv"],
+    "few_shot_prompt_filename": "multilingual_data/mlqa_(de)_test_few_shot_en_en.tsv",
     "synthetic_queries_filenames": ["multilingual_data/synthetic_queries_mlqa_(de)_test_en-en.tsv"],
-    "documents_sampled": 2,  # 4513
-    "model_choice": "google/flan-t5-small",
+    "documents_sampled": 3000,
+    "model_choice": "CohereForAI/aya-23-35B",
     "document_language": "English",
     "query_language": "English",
     "second_language": "German",

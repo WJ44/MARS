@@ -25,7 +25,6 @@ for lang1, lang2 in product(LANGS, repeat=2):
             "checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt",
             "checkpoints/microsoft-mdeberta-v3-base/Language_Consistency_Label_mlqa_dev_ratio_0.5_2024-10-02_13:18:21.pt",
         ],
-        "rag_type": "question_answering",
         "labels": [
             "Context_Relevance_Label",
             "Answer_Relevance_Label",
@@ -46,7 +45,6 @@ for lang1, lang2 in product(LANGS, repeat=2):
             f"mlqa_({LANGS[1]})_test_ratio_0.675_{lang1}_{lang2}_output.tsv",
             f"mlqa_({LANGS[1]})_test_ratio_0.7_{lang1}_{lang2}_output.tsv",
         ],
-        "azure_openai_config": {},
     }
 
     mars = MARS(ppi=ppi_config)
@@ -72,7 +70,6 @@ ppi_config = {
         "checkpoints/microsoft-mdeberta-v3-base/Answer_Faithfulness_Label_mlqa_dev_ratio_0.5_2024-10-02_05:48:52.pt",
         "checkpoints/microsoft-mdeberta-v3-base/Language_Consistency_Label_mlqa_dev_ratio_0.5_2024-10-02_13:18:21.pt",
     ],
-    "rag_type": "question_answering",
     "labels": [
         "Context_Relevance_Label",
         "Answer_Relevance_Label",
@@ -93,7 +90,6 @@ ppi_config = {
         f"mlqa_({LANGS[1]})_test_ratio_0.675_all_output.tsv",
         f"mlqa_({LANGS[1]})_test_ratio_0.7_all_output.tsv",
     ],
-    "azure_openai_config": {},
 }
 
 mars = MARS(ppi=ppi_config)

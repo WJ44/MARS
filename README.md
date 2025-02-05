@@ -1,4 +1,4 @@
-# MARS usage manual #
+# MARS #
 MARS is an evaluation tool that lets you score your multilingual RAG system on four different metrics: context relevance, answer relevance, answer faithfulness and language consistency. MARS works by using your own knowledge base to make sure its scores reflect your specific use case and only needs little labelled examples, reducing the need for you to create extensive test datasets. While the initial setup requires a GPU with considerable VRAM, using the system in practice can be done easily on conventional GPUs with just a few GBs of VRAM. MARS works in three steps: synthetic data generation, LLM judge training and RAG system evaluation. In order to use MARS to evaluate RAG systems, you will have to perform these three steps.
 
 ## Data requirements ##
